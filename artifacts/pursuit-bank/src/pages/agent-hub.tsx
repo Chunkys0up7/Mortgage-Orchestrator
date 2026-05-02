@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useCopilotChat, useCopilotReadable, useCopilotAction } from "@copilotkit/react-core";
 import { CopilotChat } from "@copilotkit/react-ui";
 import { TextMessage, Role } from "@copilotkit/runtime-client-gql";
@@ -341,6 +341,152 @@ function AgentCard({
             </div>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Activity Feed ────────────────────────────────────────────────────────────
+
+type ActivityItem = {
+  id: string;
+  type: string;
+  borrowerName: string;
+  title: string;
+  detail: string;
+  accent: string;
+  minutesAgo: number;
+};
+
+function ActivityFeed({
+  escrowAccounts,
+  helocAccounts,
+  openTasks,
+  loans,
+}: {
+  escrowAccounts: any[] | undefined;
+  helocAccounts: any[] | undefined;
+  openTasks: any[] | undefined;
+  loans: any[] | undefined;
+}) {
+  const items = useMemo<ActivityItem[]>(() => {
+    const result: ActivityItem[] = [];
+
+    (escrowAccounts ?? [])
+      .filter(a => a.status === "shortage")
+      .forEach((a, i) => {
+        result.push({
+          id: `escrow-${a.id}`,
+          type: "Escrow Alert",
+          borrowerName: a.borrowerName,
+          title: "Shortage flagged",
+          detail: `Bal. $${a.balance?.toLocaleString()} · ${a.nextDisbursementType} due ${a.nextDisbursementDate}`,
+          accent: "bg-amber-400",
+          minutesAgo: 4 + i * 6,
+        });
+      });
+
+    (openTasks ?? [])
+      .filter(t => t.priority === "urgent")
+      .slice(0, 4)
+      .forEach((t, i) => {
+        result.push({
+          id: `task-${t.id}`,
+          type: "Urgent Task",
+          borrowerName: t.borrowerName,
+          title: t.taskType?.replace(/_/g, " ") ?? "Task",
+          detail: t.loanNumber + (t.dueDate ? ` · Due ${t.dueDate}` : ""),
+          accent: "bg-red-400",
+          minutesAgo: 9 + i * 8,
+        });
+      });
+
+    (helocAccounts ?? [])
+      .filter(h => h.status === "pending")
+      .forEach((h, i) => {
+        result.push({
+          id: `heloc-${h.id}`,
+          type: "HELOC",
+          borrowerName: h.borrowerName,
+          title: `Stage: ${h.stage}`,
+          detail: `$${h.creditLimit?.toLocaleString()} · ${h.ltv}% LTV`,
+          accent: "bg-violet-400",
+          minutesAgo: 17 + i * 11,
+        });
+      });
+
+    (loans ?? [])
+      .filter(l => l.stage === "closing" || l.stage === "approved")
+      .forEach((l, i) => {
+        result.push({
+          id: `loan-${l.id ?? l.loanNumber}`,
+          type: l.stage === "closing" ? "Closing" : "Approved",
+          borrowerName: l.borrowerName,
+          title: l.stage === "closing" ? "Ready for closing" : "Loan approved",
+          detail: `${l.loanNumber} · $${l.loanAmount?.toLocaleString()}`,
+          accent: l.stage === "closing" ? "bg-emerald-400" : "bg-blue-400",
+          minutesAgo: 28 + i * 13,
+        });
+      });
+
+    (loans ?? [])
+      .filter(l => l.stage === "underwriting" || l.stage === "processing")
+      .slice(0, 3)
+      .forEach((l, i) => {
+        result.push({
+          id: `loan-proc-${l.id ?? l.loanNumber}`,
+          type: l.stage === "underwriting" ? "Underwriting" : "Processing",
+          borrowerName: l.borrowerName,
+          title: l.stage === "underwriting" ? "In underwriting" : "In processing",
+          detail: `${l.loanNumber} · $${l.loanAmount?.toLocaleString()}`,
+          accent: "bg-slate-400",
+          minutesAgo: 40 + i * 15,
+        });
+      });
+
+    return result.sort((a, b) => a.minutesAgo - b.minutesAgo);
+  }, [escrowAccounts, helocAccounts, openTasks, loans]);
+
+  const formatTime = (minutes: number) => {
+    if (minutes < 60) return `${minutes}m ago`;
+    return `${Math.floor(minutes / 60)}h ago`;
+  };
+
+  return (
+    <div className="w-52 shrink-0 flex flex-col border-r border-slate-200 bg-white overflow-hidden">
+      <div className="px-3.5 py-3 border-b border-slate-100 shrink-0">
+        <div className="flex items-center gap-2">
+          <TrendingUp className="w-3.5 h-3.5 text-slate-400" />
+          <span className="text-xs font-semibold text-slate-600">Live Activity</span>
+          <div className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-400" title="Live" />
+        </div>
+      </div>
+      <div className="flex-1 overflow-y-auto">
+        {items.length === 0 ? (
+          <div className="p-4 text-xs text-slate-400 text-center pt-8">No recent activity</div>
+        ) : (
+          <div>
+            {items.map(item => (
+              <div
+                key={item.id}
+                className="relative px-3.5 py-2.5 border-b border-slate-50 hover:bg-slate-50/70 transition-colors"
+              >
+                <div className={`absolute left-0 top-3 bottom-3 w-0.5 rounded-r ${item.accent}`} />
+                <div className="flex items-center justify-between mb-0.5">
+                  <span className="text-[9.5px] font-semibold text-slate-400 uppercase tracking-wider">
+                    {item.type}
+                  </span>
+                  <span className="text-[9.5px] text-slate-300 tabular-nums">{formatTime(item.minutesAgo)}</span>
+                </div>
+                <div className="text-xs font-semibold text-slate-700 leading-snug truncate">
+                  {item.borrowerName}
+                </div>
+                <div className="text-[11px] text-slate-500 leading-snug truncate">{item.title}</div>
+                <div className="text-[10px] text-slate-400 leading-snug truncate mt-0.5">{item.detail}</div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -759,7 +905,15 @@ export default function AgentHub() {
       {/* ── Main Content ──────────────────────────────────────────────── */}
       <div className="flex-1 flex overflow-hidden">
 
-        {/* ── Left: Agent Workspace ───────────────────────────────────── */}
+        {/* ── Far Left: Activity Feed ──────────────────────────────────── */}
+        <ActivityFeed
+          escrowAccounts={escrowAccounts ?? []}
+          helocAccounts={helocAccounts ?? []}
+          openTasks={openTasks ?? []}
+          loans={loanList}
+        />
+
+        {/* ── Middle: Agent Workspace ──────────────────────────────────── */}
         <div className="flex-1 flex flex-col overflow-hidden border-r border-slate-200">
 
           {/* Stats bar */}
