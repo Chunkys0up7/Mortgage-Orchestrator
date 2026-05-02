@@ -358,17 +358,37 @@ type ActivityItem = {
   minutesAgo: number;
 };
 
+function useRelativeTime(ts: number) {
+  const [label, setLabel] = useState(() => {
+    const s = Math.round((Date.now() - ts) / 1000);
+    return s < 10 ? "just now" : `${Math.round(s / 60)}m ago`;
+  });
+  useEffect(() => {
+    const tick = () => {
+      const s = Math.round((Date.now() - ts) / 1000);
+      setLabel(s < 10 ? "just now" : s < 3600 ? `${Math.round(s / 60)}m ago` : `${Math.floor(s / 3600)}h ago`);
+    };
+    tick();
+    const id = setInterval(tick, 10_000);
+    return () => clearInterval(id);
+  }, [ts]);
+  return label;
+}
+
 function ActivityFeed({
   escrowAccounts,
   helocAccounts,
   openTasks,
   loans,
+  lastUpdatedAt,
 }: {
   escrowAccounts: any[] | undefined;
   helocAccounts: any[] | undefined;
   openTasks: any[] | undefined;
   loans: any[] | undefined;
+  lastUpdatedAt: number;
 }) {
+  const updatedLabel = useRelativeTime(lastUpdatedAt);
   const items = useMemo<ActivityItem[]>(() => {
     const result: ActivityItem[] = [];
 
@@ -458,7 +478,13 @@ function ActivityFeed({
         <div className="flex items-center gap-2">
           <TrendingUp className="w-3.5 h-3.5 text-slate-400" />
           <span className="text-xs font-semibold text-slate-600">Live Activity</span>
-          <div className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-400" title="Live" />
+          <div className="ml-auto flex items-center gap-1.5">
+            <span className="text-[9.5px] text-slate-400">{updatedLabel}</span>
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+            </span>
+          </div>
         </div>
       </div>
       <div className="flex-1 overflow-y-auto">
@@ -531,12 +557,13 @@ export default function AgentHub() {
   const { appendMessage, isLoading } = useCopilotChat();
 
   // ── Live data for CopilotReadable ────────────────────────────────────────
-  const { data: escrowAccounts } = useListEscrow();
-  const { data: helocAccounts } = useListHeloc();
-  const { data: openTasks } = useListTasks({ status: "open" });
-  const { data: allTasks } = useListTasks({});
-  const { data: summary } = useGetPipelineSummary();
-  const { data: loansData } = useListLoans({});
+  const POLL = 30_000;
+  const { data: escrowAccounts, dataUpdatedAt: escrowUpdatedAt } = useListEscrow({ query: { refetchInterval: POLL } });
+  const { data: helocAccounts } = useListHeloc({ query: { refetchInterval: POLL } });
+  const { data: openTasks } = useListTasks({ status: "open" }, { query: { refetchInterval: POLL } });
+  const { data: allTasks } = useListTasks({}, { query: { refetchInterval: POLL } });
+  const { data: summary } = useGetPipelineSummary({ query: { refetchInterval: POLL } });
+  const { data: loansData } = useListLoans({}, { query: { refetchInterval: POLL } });
   const { mutateAsync: createTask } = useCreateTask();
   const { mutateAsync: createHeloc } = useCreateHeloc();
 
@@ -911,6 +938,7 @@ export default function AgentHub() {
           helocAccounts={helocAccounts ?? []}
           openTasks={openTasks ?? []}
           loans={loanList}
+          lastUpdatedAt={escrowUpdatedAt}
         />
 
         {/* ── Middle: Agent Workspace ──────────────────────────────────── */}
