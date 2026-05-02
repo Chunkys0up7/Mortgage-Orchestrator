@@ -1,22 +1,37 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Pursuit Bank Mortgage Loan System API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: loans
+    description: Loan pipeline management
+  - name: borrowers
+    description: Borrower/CRM data
+  - name: rates
+    description: Mortgage rate data
+  - name: products
+    description: Loan product catalog
+  - name: documents
+    description: Document checklist management
+  - name: knowledge
+    description: Knowledge base and AI chat
+  - name: pipeline
+    description: Pipeline summary and analytics
+  - name: copilot
+    description: CopilotKit AI runtime endpoints
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +39,473 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ── Loans ──────────────────────────────────────────────────────────────────
+  /loans:
+    get:
+      operationId: listLoans
+      tags: [loans]
+      summary: List all loans in pipeline
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+        - in: query
+          name: loanOfficerId
+          schema:
+            type: ["string", "null"]
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: List of loans
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListLoansResponse"
+    post:
+      operationId: createLoan
+      tags: [loans]
+      summary: Create a new loan application
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLoanBody"
+      responses:
+        "201":
+          description: Created loan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Loan"
+
+  /loans/{id}:
+    get:
+      operationId: getLoan
+      tags: [loans]
+      summary: Get loan by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Loan details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Loan"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateLoan
+      tags: [loans]
+      summary: Update loan fields
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLoanBody"
+      responses:
+        "200":
+          description: Updated loan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Loan"
+
+  /loans/{id}/status:
+    patch:
+      operationId: updateLoanStatus
+      tags: [loans]
+      summary: Advance or change loan status
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLoanStatusBody"
+      responses:
+        "200":
+          description: Updated loan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Loan"
+
+  /loans/{id}/notes:
+    get:
+      operationId: getLoanNotes
+      tags: [loans]
+      summary: Get activity notes for a loan
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Loan notes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LoanNote"
+    post:
+      operationId: createLoanNote
+      tags: [loans]
+      summary: Add a note to a loan
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLoanNoteBody"
+      responses:
+        "201":
+          description: Created note
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoanNote"
+
+  # ── Borrowers (CRM) ────────────────────────────────────────────────────────
+  /borrowers:
+    get:
+      operationId: listBorrowers
+      tags: [borrowers]
+      summary: List borrowers from CRM
+      parameters:
+        - in: query
+          name: search
+          schema:
+            type: ["string", "null"]
+      responses:
+        "200":
+          description: Borrower list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Borrower"
+    post:
+      operationId: createBorrower
+      tags: [borrowers]
+      summary: Create a new borrower record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBorrowerBody"
+      responses:
+        "201":
+          description: Created borrower
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Borrower"
+
+  /borrowers/{id}:
+    get:
+      operationId: getBorrower
+      tags: [borrowers]
+      summary: Get borrower by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Borrower
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Borrower"
+
+  # ── Rates ──────────────────────────────────────────────────────────────────
+  /rates:
+    get:
+      operationId: getRates
+      tags: [rates]
+      summary: Get current mortgage rates
+      parameters:
+        - in: query
+          name: productType
+          schema:
+            type: ["string", "null"]
+      responses:
+        "200":
+          description: Rate list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MortgageRate"
+
+  /rates/history:
+    get:
+      operationId: getRateHistory
+      tags: [rates]
+      summary: Rate trend history (30-day)
+      responses:
+        "200":
+          description: Historical rate data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RateHistoryPoint"
+
+  # ── Products ───────────────────────────────────────────────────────────────
+  /products:
+    get:
+      operationId: listProducts
+      tags: [products]
+      summary: List available loan products
+      responses:
+        "200":
+          description: Products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LoanProduct"
+
+  /products/{id}:
+    get:
+      operationId: getProduct
+      tags: [products]
+      summary: Get loan product details
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoanProduct"
+
+  # ── Documents ──────────────────────────────────────────────────────────────
+  /loans/{id}/documents:
+    get:
+      operationId: getLoanDocuments
+      tags: [documents]
+      summary: Get document checklist for a loan
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Documents
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LoanDocument"
+    post:
+      operationId: addLoanDocument
+      tags: [documents]
+      summary: Add a document to the checklist
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddLoanDocumentBody"
+      responses:
+        "201":
+          description: Created document entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoanDocument"
+
+  /loans/{loanId}/documents/{docId}:
+    patch:
+      operationId: updateLoanDocument
+      tags: [documents]
+      summary: Update document status
+      parameters:
+        - in: path
+          name: loanId
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: docId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLoanDocumentBody"
+      responses:
+        "200":
+          description: Updated doc
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoanDocument"
+
+  # ── Knowledge Base ─────────────────────────────────────────────────────────
+  /knowledge/articles:
+    get:
+      operationId: listKnowledgeArticles
+      tags: [knowledge]
+      summary: List knowledge base articles
+      parameters:
+        - in: query
+          name: category
+          schema:
+            type: ["string", "null"]
+        - in: query
+          name: search
+          schema:
+            type: ["string", "null"]
+      responses:
+        "200":
+          description: Articles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/KnowledgeArticle"
+
+  /knowledge/articles/{id}:
+    get:
+      operationId: getKnowledgeArticle
+      tags: [knowledge]
+      summary: Get a knowledge base article
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Article
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgeArticle"
+
+  # ── Pipeline Summary (wow endpoints) ───────────────────────────────────────
+  /pipeline/summary:
+    get:
+      operationId: getPipelineSummary
+      tags: [pipeline]
+      summary: Pipeline overview — counts, values, stage breakdown
+      responses:
+        "200":
+          description: Summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PipelineSummary"
+
+  /pipeline/activity:
+    get:
+      operationId: getPipelineActivity
+      tags: [pipeline]
+      summary: Recent loan activity feed
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: Activity items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityItem"
+
+  # ── CopilotKit Runtime ─────────────────────────────────────────────────────
+  /copilot:
+    post:
+      operationId: copilotRuntime
+      tags: [copilot]
+      summary: CopilotKit AG-UI runtime endpoint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Streaming response
+          content:
+            text/event-stream:
+              schema:
+                type: string
+
 components:
   schemas:
     HealthStatus:
@@ -31,6 +513,496 @@ components:
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
+    Loan:
+      type: object
+      properties:
+        id:
+          type: integer
+        loanNumber:
+          type: string
+        borrowerId:
+          type: integer
+        borrowerName:
+          type: string
+        propertyAddress:
+          type: string
+        loanAmount:
+          type: number
+        loanType:
+          type: string
+        productId:
+          type: ["integer", "null"]
+        interestRate:
+          type: ["number", "null"]
+        ltv:
+          type: ["number", "null"]
+        dti:
+          type: ["number", "null"]
+        creditScore:
+          type: ["integer", "null"]
+        status:
+          type: string
+        stage:
+          type: string
+        loanOfficer:
+          type: string
+        processor:
+          type: ["string", "null"]
+        closingDate:
+          type: ["string", "null"]
+        purchasePrice:
+          type: ["number", "null"]
+        downPayment:
+          type: ["number", "null"]
+        loanPurpose:
+          type: string
+        propertyType:
+          type: string
+        occupancyType:
+          type: string
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - loanNumber
+        - borrowerId
+        - borrowerName
+        - propertyAddress
+        - loanAmount
+        - loanType
+        - status
+        - stage
+        - loanOfficer
+        - loanPurpose
+        - propertyType
+        - occupancyType
+        - createdAt
+        - updatedAt
+
+    ListLoansResponse:
+      type: object
+      properties:
+        loans:
+          type: array
+          items:
+            $ref: "#/components/schemas/Loan"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required: [loans, total, page, limit]
+
+    CreateLoanBody:
+      type: object
+      properties:
+        borrowerId:
+          type: integer
+        propertyAddress:
+          type: string
+        loanAmount:
+          type: number
+        loanType:
+          type: string
+        loanPurpose:
+          type: string
+        propertyType:
+          type: string
+        occupancyType:
+          type: string
+        purchasePrice:
+          type: ["number", "null"]
+        downPayment:
+          type: ["number", "null"]
+        loanOfficer:
+          type: string
+      required:
+        - borrowerId
+        - propertyAddress
+        - loanAmount
+        - loanType
+        - loanPurpose
+        - propertyType
+        - occupancyType
+        - loanOfficer
+
+    UpdateLoanBody:
+      type: object
+      properties:
+        propertyAddress:
+          type: ["string", "null"]
+        loanAmount:
+          type: ["number", "null"]
+        loanType:
+          type: ["string", "null"]
+        productId:
+          type: ["integer", "null"]
+        interestRate:
+          type: ["number", "null"]
+        ltv:
+          type: ["number", "null"]
+        dti:
+          type: ["number", "null"]
+        creditScore:
+          type: ["integer", "null"]
+        processor:
+          type: ["string", "null"]
+        closingDate:
+          type: ["string", "null"]
+
+    UpdateLoanStatusBody:
+      type: object
+      properties:
+        status:
+          type: string
+        stage:
+          type: string
+      required: [status, stage]
+
+    LoanNote:
+      type: object
+      properties:
+        id:
+          type: integer
+        loanId:
+          type: integer
+        author:
+          type: string
+        content:
+          type: string
+        noteType:
+          type: string
+        createdAt:
+          type: string
+      required: [id, loanId, author, content, noteType, createdAt]
+
+    CreateLoanNoteBody:
+      type: object
+      properties:
+        author:
+          type: string
+        content:
+          type: string
+        noteType:
+          type: string
+      required: [author, content, noteType]
+
+    Borrower:
+      type: object
+      properties:
+        id:
+          type: integer
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        ssn:
+          type: ["string", "null"]
+        dateOfBirth:
+          type: ["string", "null"]
+        employmentStatus:
+          type: string
+        annualIncome:
+          type: ["number", "null"]
+        creditScore:
+          type: ["integer", "null"]
+        currentAddress:
+          type: ["string", "null"]
+        crmSource:
+          type: string
+        crmId:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required:
+        - id
+        - firstName
+        - lastName
+        - email
+        - phone
+        - employmentStatus
+        - crmSource
+        - createdAt
+
+    CreateBorrowerBody:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        employmentStatus:
+          type: string
+        annualIncome:
+          type: ["number", "null"]
+        creditScore:
+          type: ["integer", "null"]
+        currentAddress:
+          type: ["string", "null"]
+        crmSource:
+          type: string
+      required: [firstName, lastName, email, phone, employmentStatus, crmSource]
+
+    MortgageRate:
+      type: object
+      properties:
+        id:
+          type: integer
+        productType:
+          type: string
+        term:
+          type: integer
+        rate:
+          type: number
+        apr:
+          type: number
+        points:
+          type: number
+        effectiveDate:
+          type: string
+        source:
+          type: string
+      required: [id, productType, term, rate, apr, points, effectiveDate, source]
+
+    RateHistoryPoint:
+      type: object
+      properties:
+        date:
+          type: string
+        rate30yr:
+          type: number
+        rate15yr:
+          type: number
+        rateArm5:
+          type: number
+      required: [date, rate30yr, rate15yr, rateArm5]
+
+    LoanProduct:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        productType:
+          type: string
+        description:
+          type: string
+        minLoanAmount:
+          type: number
+        maxLoanAmount:
+          type: number
+        minCreditScore:
+          type: integer
+        maxLtv:
+          type: number
+        maxDti:
+          type: number
+        term:
+          type: integer
+        isActive:
+          type: boolean
+        features:
+          type: array
+          items:
+            type: string
+        eligibilityNotes:
+          type: string
+      required:
+        - id
+        - name
+        - productType
+        - description
+        - minLoanAmount
+        - maxLoanAmount
+        - minCreditScore
+        - maxLtv
+        - maxDti
+        - term
+        - isActive
+        - features
+        - eligibilityNotes
+
+    LoanDocument:
+      type: object
+      properties:
+        id:
+          type: integer
+        loanId:
+          type: integer
+        documentName:
+          type: string
+        documentType:
+          type: string
+        status:
+          type: string
+        required:
+          type: boolean
+        receivedAt:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required:
+        - id
+        - loanId
+        - documentName
+        - documentType
+        - status
+        - required
+        - createdAt
+
+    AddLoanDocumentBody:
+      type: object
+      properties:
+        documentName:
+          type: string
+        documentType:
+          type: string
+        required:
+          type: boolean
+        notes:
+          type: ["string", "null"]
+      required: [documentName, documentType, required]
+
+    UpdateLoanDocumentBody:
+      type: object
+      properties:
+        status:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+        receivedAt:
+          type: ["string", "null"]
+
+    KnowledgeArticle:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        category:
+          type: string
+        source:
+          type: string
+        summary:
+          type: string
+        content:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        url:
+          type: ["string", "null"]
+        updatedAt:
+          type: string
+      required:
+        - id
+        - title
+        - category
+        - source
+        - summary
+        - content
+        - tags
+        - updatedAt
+
+    PipelineSummary:
+      type: object
+      properties:
+        totalLoans:
+          type: integer
+        totalVolume:
+          type: number
+        averageLoanAmount:
+          type: number
+        byStage:
+          type: array
+          items:
+            $ref: "#/components/schemas/StageCount"
+        byType:
+          type: array
+          items:
+            $ref: "#/components/schemas/TypeCount"
+        closingThisMonth:
+          type: integer
+        pendingDocuments:
+          type: integer
+        approvedLoans:
+          type: integer
+        averageCreditScore:
+          type: number
+      required:
+        - totalLoans
+        - totalVolume
+        - averageLoanAmount
+        - byStage
+        - byType
+        - closingThisMonth
+        - pendingDocuments
+        - approvedLoans
+        - averageCreditScore
+
+    StageCount:
+      type: object
+      properties:
+        stage:
+          type: string
+        count:
+          type: integer
+        volume:
+          type: number
+      required: [stage, count, volume]
+
+    TypeCount:
+      type: object
+      properties:
+        type:
+          type: string
+        count:
+          type: integer
+      required: [type, count]
+
+    ActivityItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        loanId:
+          type: integer
+        loanNumber:
+          type: string
+        borrowerName:
+          type: string
+        action:
+          type: string
+        description:
+          type: string
+        actor:
+          type: string
+        timestamp:
+          type: string
+      required:
+        - id
+        - loanId
+        - loanNumber
+        - borrowerName
+        - action
+        - description
+        - actor
+        - timestamp
