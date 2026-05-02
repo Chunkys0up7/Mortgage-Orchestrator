@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { sql, desc } from "drizzle-orm";
-import { db, loansTable, loanDocumentsTable, activityLogTable } from "@workspace/db";
+import { sql, desc, and, gte } from "drizzle-orm";
+import { db, loansTable, loanDocumentsTable, activityLogTable, loanTasksTable, escrowAccountsTable, helocAccountsTable } from "@workspace/db";
 import { GetPipelineActivityQueryParams } from "@workspace/api-zod";
 
 const router: IRouter = Router();
@@ -29,19 +29,19 @@ router.get("/pipeline/summary", async (_req, res): Promise<void> => {
     }).from(loansTable),
   ]);
 
-  const thisMonth = new Date();
-  thisMonth.setDate(1);
-  const closingThisMonth = await db.select({ count: sql<number>`count(*)` })
-    .from(loansTable)
-    .where(sql`stage = 'closing'`);
-
-  const pendingDocs = await db.select({ count: sql<number>`count(*)` })
-    .from(loanDocumentsTable)
-    .where(sql`status = 'pending'`);
-
-  const approved = await db.select({ count: sql<number>`count(*)` })
-    .from(loansTable)
-    .where(sql`stage in ('approved', 'closing', 'funded')`);
+  const [closingThisMonth, pendingDocs, approved, openTasks, escrowDisbursements, helocTotal] = await Promise.all([
+    db.select({ count: sql<number>`count(*)` }).from(loansTable).where(sql`stage = 'closing'`),
+    db.select({ count: sql<number>`count(*)` }).from(loanDocumentsTable).where(sql`status = 'pending'`),
+    db.select({ count: sql<number>`count(*)` }).from(loansTable).where(sql`stage in ('approved', 'closing', 'funded')`),
+    db.select({ count: sql<number>`count(*)` }).from(loanTasksTable).where(sql`status in ('open', 'in_progress')`),
+    db.select({ count: sql<number>`count(*)` }).from(escrowAccountsTable).where(
+      and(sql`next_disbursement_date is not null`, gte(escrowAccountsTable.nextDisbursementDate as unknown as string, new Date().toISOString().split("T")[0]!))
+    ),
+    db.select({
+      count: sql<number>`count(*)`,
+      totalCredit: sql<number>`coalesce(sum(cast(credit_limit as numeric)), 0)`,
+    }).from(helocAccountsTable),
+  ]);
 
   const summary = totalResult[0];
   res.json({
@@ -54,6 +54,10 @@ router.get("/pipeline/summary", async (_req, res): Promise<void> => {
     pendingDocuments: Number(pendingDocs[0]?.count ?? 0),
     approvedLoans: Number(approved[0]?.count ?? 0),
     averageCreditScore: Math.round(Number(creditResult[0]?.avgCredit ?? 0)),
+    openTasks: Number(openTasks[0]?.count ?? 0),
+    escrowDisbursementsThisMonth: Number(escrowDisbursements[0]?.count ?? 0),
+    helocAccounts: Number(helocTotal[0]?.count ?? 0),
+    totalHelocCredit: Number(helocTotal[0]?.totalCredit ?? 0),
   });
 });
 

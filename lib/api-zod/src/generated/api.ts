@@ -21,7 +21,7 @@ export const listLoansQueryPageDefault = 1;
 export const listLoansQueryLimitDefault = 20;
 
 export const ListLoansQueryParams = zod.object({
-  status: zod.coerce.string().optional(),
+  status: zod.coerce.string().nullish(),
   loanOfficerId: zod.coerce.string().nullish(),
   page: zod.coerce.number().default(listLoansQueryPageDefault),
   limit: zod.coerce.number().default(listLoansQueryLimitDefault),
@@ -75,6 +75,11 @@ export const CreateLoanBody = zod.object({
   purchasePrice: zod.number().nullish(),
   downPayment: zod.number().nullish(),
   loanOfficer: zod.string(),
+  interestRate: zod.number().nullish(),
+  creditScore: zod.number().nullish(),
+  ltv: zod.number().nullish(),
+  dti: zod.number().nullish(),
+  productId: zod.number().nullish(),
 });
 
 /**
@@ -467,7 +472,7 @@ export const GetKnowledgeArticleResponse = zod.object({
 });
 
 /**
- * @summary Pipeline overview — counts, values, stage breakdown
+ * @summary Operations pipeline overview
  */
 export const GetPipelineSummaryResponse = zod.object({
   totalLoans: zod.number(),
@@ -490,6 +495,10 @@ export const GetPipelineSummaryResponse = zod.object({
   pendingDocuments: zod.number(),
   approvedLoans: zod.number(),
   averageCreditScore: zod.number(),
+  openTasks: zod.number(),
+  escrowDisbursementsThisMonth: zod.number(),
+  helocAccounts: zod.number(),
+  totalHelocCredit: zod.number(),
 });
 
 /**
@@ -514,6 +523,299 @@ export const GetPipelineActivityResponseItem = zod.object({
 export const GetPipelineActivityResponse = zod.array(
   GetPipelineActivityResponseItem,
 );
+
+/**
+ * @summary List all escrow accounts
+ */
+export const ListEscrowResponseItem = zod.object({
+  id: zod.number(),
+  loanId: zod.number(),
+  loanNumber: zod.string(),
+  borrowerName: zod.string(),
+  propertyAddress: zod.string(),
+  propertyTaxAnnual: zod.number(),
+  insuranceAnnual: zod.number(),
+  hoaAnnual: zod.number(),
+  monthlyEscrowPayment: zod.number(),
+  balance: zod.number(),
+  nextDisbursementDate: zod.string().nullish(),
+  nextDisbursementType: zod.string().nullish(),
+  nextDisbursementAmount: zod.number().nullish(),
+  status: zod.string(),
+  lastAnalysisDate: zod.string().nullish(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+export const ListEscrowResponse = zod.array(ListEscrowResponseItem);
+
+/**
+ * @summary Create an escrow account
+ */
+export const CreateEscrowBody = zod.object({
+  loanId: zod.number(),
+  loanNumber: zod.string(),
+  borrowerName: zod.string(),
+  propertyAddress: zod.string(),
+  propertyTaxAnnual: zod.number(),
+  insuranceAnnual: zod.number(),
+  hoaAnnual: zod.number().optional(),
+});
+
+/**
+ * @summary Get escrow account by ID
+ */
+export const GetEscrowParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetEscrowResponse = zod.object({
+  id: zod.number(),
+  loanId: zod.number(),
+  loanNumber: zod.string(),
+  borrowerName: zod.string(),
+  propertyAddress: zod.string(),
+  propertyTaxAnnual: zod.number(),
+  insuranceAnnual: zod.number(),
+  hoaAnnual: zod.number(),
+  monthlyEscrowPayment: zod.number(),
+  balance: zod.number(),
+  nextDisbursementDate: zod.string().nullish(),
+  nextDisbursementType: zod.string().nullish(),
+  nextDisbursementAmount: zod.number().nullish(),
+  status: zod.string(),
+  lastAnalysisDate: zod.string().nullish(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+
+/**
+ * @summary Update escrow account
+ */
+export const UpdateEscrowParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateEscrowBody = zod.object({
+  balance: zod.number().nullish(),
+  status: zod.string().nullish(),
+  nextDisbursementDate: zod.string().nullish(),
+  nextDisbursementType: zod.string().nullish(),
+  nextDisbursementAmount: zod.number().nullish(),
+  lastAnalysisDate: zod.string().nullish(),
+  propertyTaxAnnual: zod.number().nullish(),
+  insuranceAnnual: zod.number().nullish(),
+  monthlyEscrowPayment: zod.number().nullish(),
+});
+
+export const UpdateEscrowResponse = zod.object({
+  id: zod.number(),
+  loanId: zod.number(),
+  loanNumber: zod.string(),
+  borrowerName: zod.string(),
+  propertyAddress: zod.string(),
+  propertyTaxAnnual: zod.number(),
+  insuranceAnnual: zod.number(),
+  hoaAnnual: zod.number(),
+  monthlyEscrowPayment: zod.number(),
+  balance: zod.number(),
+  nextDisbursementDate: zod.string().nullish(),
+  nextDisbursementType: zod.string().nullish(),
+  nextDisbursementAmount: zod.number().nullish(),
+  status: zod.string(),
+  lastAnalysisDate: zod.string().nullish(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+
+/**
+ * @summary List all HELOC accounts
+ */
+export const ListHelocResponseItem = zod.object({
+  id: zod.number(),
+  loanNumber: zod.string(),
+  borrowerId: zod.number(),
+  borrowerName: zod.string(),
+  propertyAddress: zod.string(),
+  creditLimit: zod.number(),
+  availableCredit: zod.number(),
+  drawnAmount: zod.number(),
+  interestRate: zod.number(),
+  drawPeriodEnd: zod.string(),
+  repaymentPeriodEnd: zod.string(),
+  minimumPayment: zod.number().nullish(),
+  nextPaymentDate: zod.string().nullish(),
+  nextPaymentAmount: zod.number().nullish(),
+  stage: zod.string(),
+  status: zod.string(),
+  ltv: zod.number().nullish(),
+  creditScore: zod.number().nullish(),
+  loanOfficer: zod.string(),
+  processor: zod.string().nullish(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+export const ListHelocResponse = zod.array(ListHelocResponseItem);
+
+/**
+ * @summary Create a HELOC application
+ */
+export const CreateHelocBody = zod.object({
+  borrowerId: zod.number(),
+  borrowerName: zod.string(),
+  propertyAddress: zod.string(),
+  creditLimit: zod.number(),
+  interestRate: zod.number(),
+  drawPeriodEnd: zod.string(),
+  repaymentPeriodEnd: zod.string(),
+  ltv: zod.number().nullish(),
+  creditScore: zod.number().nullish(),
+  loanOfficer: zod.string(),
+});
+
+/**
+ * @summary Get HELOC account by ID
+ */
+export const GetHelocParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetHelocResponse = zod.object({
+  id: zod.number(),
+  loanNumber: zod.string(),
+  borrowerId: zod.number(),
+  borrowerName: zod.string(),
+  propertyAddress: zod.string(),
+  creditLimit: zod.number(),
+  availableCredit: zod.number(),
+  drawnAmount: zod.number(),
+  interestRate: zod.number(),
+  drawPeriodEnd: zod.string(),
+  repaymentPeriodEnd: zod.string(),
+  minimumPayment: zod.number().nullish(),
+  nextPaymentDate: zod.string().nullish(),
+  nextPaymentAmount: zod.number().nullish(),
+  stage: zod.string(),
+  status: zod.string(),
+  ltv: zod.number().nullish(),
+  creditScore: zod.number().nullish(),
+  loanOfficer: zod.string(),
+  processor: zod.string().nullish(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+
+/**
+ * @summary Update HELOC account
+ */
+export const UpdateHelocParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateHelocBody = zod.object({
+  availableCredit: zod.number().nullish(),
+  drawnAmount: zod.number().nullish(),
+  interestRate: zod.number().nullish(),
+  minimumPayment: zod.number().nullish(),
+  nextPaymentDate: zod.string().nullish(),
+  nextPaymentAmount: zod.number().nullish(),
+  stage: zod.string().nullish(),
+  status: zod.string().nullish(),
+  processor: zod.string().nullish(),
+});
+
+export const UpdateHelocResponse = zod.object({
+  id: zod.number(),
+  loanNumber: zod.string(),
+  borrowerId: zod.number(),
+  borrowerName: zod.string(),
+  propertyAddress: zod.string(),
+  creditLimit: zod.number(),
+  availableCredit: zod.number(),
+  drawnAmount: zod.number(),
+  interestRate: zod.number(),
+  drawPeriodEnd: zod.string(),
+  repaymentPeriodEnd: zod.string(),
+  minimumPayment: zod.number().nullish(),
+  nextPaymentDate: zod.string().nullish(),
+  nextPaymentAmount: zod.number().nullish(),
+  stage: zod.string(),
+  status: zod.string(),
+  ltv: zod.number().nullish(),
+  creditScore: zod.number().nullish(),
+  loanOfficer: zod.string(),
+  processor: zod.string().nullish(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+
+/**
+ * @summary List operational tasks
+ */
+export const ListTasksQueryParams = zod.object({
+  status: zod.coerce.string().nullish(),
+  assignedTo: zod.coerce.string().nullish(),
+  loanId: zod.coerce.number().nullish(),
+});
+
+export const ListTasksResponseItem = zod.object({
+  id: zod.number(),
+  loanId: zod.number(),
+  loanNumber: zod.string(),
+  borrowerName: zod.string(),
+  taskType: zod.string(),
+  description: zod.string(),
+  dueDate: zod.string().nullish(),
+  assignedTo: zod.string().nullish(),
+  status: zod.string(),
+  priority: zod.string(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+export const ListTasksResponse = zod.array(ListTasksResponseItem);
+
+/**
+ * @summary Create an operational task
+ */
+export const CreateTaskBody = zod.object({
+  loanId: zod.number(),
+  loanNumber: zod.string(),
+  borrowerName: zod.string(),
+  taskType: zod.string(),
+  description: zod.string(),
+  dueDate: zod.string().nullish(),
+  assignedTo: zod.string().nullish(),
+  priority: zod.string().optional(),
+});
+
+/**
+ * @summary Update task status or details
+ */
+export const UpdateTaskParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateTaskBody = zod.object({
+  status: zod.string().nullish(),
+  priority: zod.string().nullish(),
+  assignedTo: zod.string().nullish(),
+  dueDate: zod.string().nullish(),
+  description: zod.string().nullish(),
+});
+
+export const UpdateTaskResponse = zod.object({
+  id: zod.number(),
+  loanId: zod.number(),
+  loanNumber: zod.string(),
+  borrowerName: zod.string(),
+  taskType: zod.string(),
+  description: zod.string(),
+  dueDate: zod.string().nullish(),
+  assignedTo: zod.string().nullish(),
+  status: zod.string(),
+  priority: zod.string(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
 
 /**
  * @summary CopilotKit AG-UI runtime endpoint

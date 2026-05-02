@@ -106,6 +106,78 @@ export const insertLoanDocumentSchema = createInsertSchema(loanDocumentsTable).o
 export type InsertLoanDocument = z.infer<typeof insertLoanDocumentSchema>;
 export type LoanDocument = typeof loanDocumentsTable.$inferSelect;
 
+export const loanTasksTable = pgTable("loan_tasks", {
+  id: serial("id").primaryKey(),
+  loanId: integer("loan_id").notNull(),
+  loanNumber: text("loan_number").notNull(),
+  borrowerName: text("borrower_name").notNull(),
+  taskType: text("task_type").notNull(),
+  description: text("description").notNull(),
+  dueDate: text("due_date"),
+  assignedTo: text("assigned_to"),
+  status: text("status").notNull().default("open"),
+  priority: text("priority").notNull().default("normal"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+});
+
+export const insertLoanTaskSchema = createInsertSchema(loanTasksTable).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertLoanTask = z.infer<typeof insertLoanTaskSchema>;
+export type LoanTask = typeof loanTasksTable.$inferSelect;
+
+export const escrowAccountsTable = pgTable("escrow_accounts", {
+  id: serial("id").primaryKey(),
+  loanId: integer("loan_id").notNull(),
+  loanNumber: text("loan_number").notNull(),
+  borrowerName: text("borrower_name").notNull(),
+  propertyAddress: text("property_address").notNull(),
+  propertyTaxAnnual: numeric("property_tax_annual", { precision: 15, scale: 2 }).notNull(),
+  insuranceAnnual: numeric("insurance_annual", { precision: 15, scale: 2 }).notNull(),
+  hoaAnnual: numeric("hoa_annual", { precision: 15, scale: 2 }).notNull().default("0"),
+  monthlyEscrowPayment: numeric("monthly_escrow_payment", { precision: 15, scale: 2 }).notNull(),
+  balance: numeric("balance", { precision: 15, scale: 2 }).notNull().default("0"),
+  nextDisbursementDate: text("next_disbursement_date"),
+  nextDisbursementType: text("next_disbursement_type"),
+  nextDisbursementAmount: numeric("next_disbursement_amount", { precision: 15, scale: 2 }),
+  status: text("status").notNull().default("active"),
+  lastAnalysisDate: text("last_analysis_date"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+});
+
+export const insertEscrowAccountSchema = createInsertSchema(escrowAccountsTable).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertEscrowAccount = z.infer<typeof insertEscrowAccountSchema>;
+export type EscrowAccount = typeof escrowAccountsTable.$inferSelect;
+
+export const helocAccountsTable = pgTable("heloc_accounts", {
+  id: serial("id").primaryKey(),
+  loanNumber: text("loan_number").notNull().unique(),
+  borrowerId: integer("borrower_id").notNull(),
+  borrowerName: text("borrower_name").notNull(),
+  propertyAddress: text("property_address").notNull(),
+  creditLimit: numeric("credit_limit", { precision: 15, scale: 2 }).notNull(),
+  availableCredit: numeric("available_credit", { precision: 15, scale: 2 }).notNull(),
+  drawnAmount: numeric("drawn_amount", { precision: 15, scale: 2 }).notNull().default("0"),
+  interestRate: numeric("interest_rate", { precision: 6, scale: 4 }).notNull(),
+  drawPeriodEnd: text("draw_period_end").notNull(),
+  repaymentPeriodEnd: text("repayment_period_end").notNull(),
+  minimumPayment: numeric("minimum_payment", { precision: 15, scale: 2 }),
+  nextPaymentDate: text("next_payment_date"),
+  nextPaymentAmount: numeric("next_payment_amount", { precision: 15, scale: 2 }),
+  stage: text("stage").notNull().default("application"),
+  status: text("status").notNull().default("active"),
+  ltv: numeric("ltv", { precision: 5, scale: 2 }),
+  creditScore: integer("credit_score"),
+  loanOfficer: text("loan_officer").notNull(),
+  processor: text("processor"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+});
+
+export const insertHelocAccountSchema = createInsertSchema(helocAccountsTable).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertHelocAccount = z.infer<typeof insertHelocAccountSchema>;
+export type HelocAccount = typeof helocAccountsTable.$inferSelect;
+
 export const mortgageRatesTable = pgTable("mortgage_rates", {
   id: serial("id").primaryKey(),
   productType: text("product_type").notNull(),

@@ -8,23 +8,17 @@ servers:
     description: Base API path
 tags:
   - name: health
-    description: Health operations
   - name: loans
-    description: Loan pipeline management
   - name: borrowers
-    description: Borrower/CRM data
   - name: rates
-    description: Mortgage rate data
   - name: products
-    description: Loan product catalog
   - name: documents
-    description: Document checklist management
   - name: knowledge
-    description: Knowledge base and AI chat
   - name: pipeline
-    description: Pipeline summary and analytics
+  - name: escrow
+  - name: heloc
+  - name: tasks
   - name: copilot
-    description: CopilotKit AI runtime endpoints
 
 paths:
   /healthz:
@@ -50,7 +44,7 @@ paths:
         - in: query
           name: status
           schema:
-            type: string
+            type: ["string", "null"]
         - in: query
           name: loanOfficerId
           schema:
@@ -450,12 +444,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/KnowledgeArticle"
 
-  # ── Pipeline Summary (wow endpoints) ───────────────────────────────────────
+  # ── Pipeline Summary ────────────────────────────────────────────────────────
   /pipeline/summary:
     get:
       operationId: getPipelineSummary
       tags: [pipeline]
-      summary: Pipeline overview — counts, values, stage breakdown
+      summary: Operations pipeline overview
       responses:
         "200":
           description: Summary
@@ -484,6 +478,227 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ActivityItem"
+
+  # ── Escrow ──────────────────────────────────────────────────────────────────
+  /escrow:
+    get:
+      operationId: listEscrow
+      tags: [escrow]
+      summary: List all escrow accounts
+      responses:
+        "200":
+          description: Escrow accounts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EscrowAccount"
+    post:
+      operationId: createEscrow
+      tags: [escrow]
+      summary: Create an escrow account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateEscrowBody"
+      responses:
+        "201":
+          description: Created escrow account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EscrowAccount"
+
+  /escrow/{id}:
+    get:
+      operationId: getEscrow
+      tags: [escrow]
+      summary: Get escrow account by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Escrow account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EscrowAccount"
+    patch:
+      operationId: updateEscrow
+      tags: [escrow]
+      summary: Update escrow account
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateEscrowBody"
+      responses:
+        "200":
+          description: Updated escrow account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EscrowAccount"
+
+  # ── HELOC ──────────────────────────────────────────────────────────────────
+  /heloc:
+    get:
+      operationId: listHeloc
+      tags: [heloc]
+      summary: List all HELOC accounts
+      responses:
+        "200":
+          description: HELOC accounts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/HelocAccount"
+    post:
+      operationId: createHeloc
+      tags: [heloc]
+      summary: Create a HELOC application
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateHelocBody"
+      responses:
+        "201":
+          description: Created HELOC account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HelocAccount"
+
+  /heloc/{id}:
+    get:
+      operationId: getHeloc
+      tags: [heloc]
+      summary: Get HELOC account by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: HELOC account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HelocAccount"
+    patch:
+      operationId: updateHeloc
+      tags: [heloc]
+      summary: Update HELOC account
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateHelocBody"
+      responses:
+        "200":
+          description: Updated HELOC account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HelocAccount"
+
+  # ── Tasks ──────────────────────────────────────────────────────────────────
+  /tasks:
+    get:
+      operationId: listTasks
+      tags: [tasks]
+      summary: List operational tasks
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: ["string", "null"]
+        - in: query
+          name: assignedTo
+          schema:
+            type: ["string", "null"]
+        - in: query
+          name: loanId
+          schema:
+            type: ["integer", "null"]
+      responses:
+        "200":
+          description: Tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LoanTask"
+    post:
+      operationId: createTask
+      tags: [tasks]
+      summary: Create an operational task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTaskBody"
+      responses:
+        "201":
+          description: Created task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoanTask"
+
+  /tasks/{id}:
+    patch:
+      operationId: updateTask
+      tags: [tasks]
+      summary: Update task status or details
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTaskBody"
+      responses:
+        "200":
+          description: Updated task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoanTask"
 
   # ── CopilotKit Runtime ─────────────────────────────────────────────────────
   /copilot:
@@ -621,6 +836,16 @@ components:
           type: ["number", "null"]
         loanOfficer:
           type: string
+        interestRate:
+          type: ["number", "null"]
+        creditScore:
+          type: ["integer", "null"]
+        ltv:
+          type: ["number", "null"]
+        dti:
+          type: ["number", "null"]
+        productId:
+          type: ["integer", "null"]
       required:
         - borrowerId
         - propertyAddress
@@ -946,6 +1171,14 @@ components:
         approvedLoans:
           type: integer
         averageCreditScore:
+          type: integer
+        openTasks:
+          type: integer
+        escrowDisbursementsThisMonth:
+          type: integer
+        helocAccounts:
+          type: integer
+        totalHelocCredit:
           type: number
       required:
         - totalLoans
@@ -957,6 +1190,10 @@ components:
         - pendingDocuments
         - approvedLoans
         - averageCreditScore
+        - openTasks
+        - escrowDisbursementsThisMonth
+        - helocAccounts
+        - totalHelocCredit
 
     StageCount:
       type: object
@@ -997,12 +1234,291 @@ components:
           type: string
         timestamp:
           type: string
+      required: [id, loanId, loanNumber, borrowerName, action, description, actor, timestamp]
+
+    EscrowAccount:
+      type: object
+      properties:
+        id:
+          type: integer
+        loanId:
+          type: integer
+        loanNumber:
+          type: string
+        borrowerName:
+          type: string
+        propertyAddress:
+          type: string
+        propertyTaxAnnual:
+          type: number
+        insuranceAnnual:
+          type: number
+        hoaAnnual:
+          type: number
+        monthlyEscrowPayment:
+          type: number
+        balance:
+          type: number
+        nextDisbursementDate:
+          type: ["string", "null"]
+        nextDisbursementType:
+          type: ["string", "null"]
+        nextDisbursementAmount:
+          type: ["number", "null"]
+        status:
+          type: string
+        lastAnalysisDate:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
       required:
         - id
         - loanId
         - loanNumber
         - borrowerName
-        - action
+        - propertyAddress
+        - propertyTaxAnnual
+        - insuranceAnnual
+        - hoaAnnual
+        - monthlyEscrowPayment
+        - balance
+        - status
+        - createdAt
+        - updatedAt
+
+    CreateEscrowBody:
+      type: object
+      properties:
+        loanId:
+          type: integer
+        loanNumber:
+          type: string
+        borrowerName:
+          type: string
+        propertyAddress:
+          type: string
+        propertyTaxAnnual:
+          type: number
+        insuranceAnnual:
+          type: number
+        hoaAnnual:
+          type: number
+      required: [loanId, loanNumber, borrowerName, propertyAddress, propertyTaxAnnual, insuranceAnnual]
+
+    UpdateEscrowBody:
+      type: object
+      properties:
+        balance:
+          type: ["number", "null"]
+        status:
+          type: ["string", "null"]
+        nextDisbursementDate:
+          type: ["string", "null"]
+        nextDisbursementType:
+          type: ["string", "null"]
+        nextDisbursementAmount:
+          type: ["number", "null"]
+        lastAnalysisDate:
+          type: ["string", "null"]
+        propertyTaxAnnual:
+          type: ["number", "null"]
+        insuranceAnnual:
+          type: ["number", "null"]
+        monthlyEscrowPayment:
+          type: ["number", "null"]
+
+    HelocAccount:
+      type: object
+      properties:
+        id:
+          type: integer
+        loanNumber:
+          type: string
+        borrowerId:
+          type: integer
+        borrowerName:
+          type: string
+        propertyAddress:
+          type: string
+        creditLimit:
+          type: number
+        availableCredit:
+          type: number
+        drawnAmount:
+          type: number
+        interestRate:
+          type: number
+        drawPeriodEnd:
+          type: string
+        repaymentPeriodEnd:
+          type: string
+        minimumPayment:
+          type: ["number", "null"]
+        nextPaymentDate:
+          type: ["string", "null"]
+        nextPaymentAmount:
+          type: ["number", "null"]
+        stage:
+          type: string
+        status:
+          type: string
+        ltv:
+          type: ["number", "null"]
+        creditScore:
+          type: ["integer", "null"]
+        loanOfficer:
+          type: string
+        processor:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - loanNumber
+        - borrowerId
+        - borrowerName
+        - propertyAddress
+        - creditLimit
+        - availableCredit
+        - drawnAmount
+        - interestRate
+        - drawPeriodEnd
+        - repaymentPeriodEnd
+        - stage
+        - status
+        - loanOfficer
+        - createdAt
+        - updatedAt
+
+    CreateHelocBody:
+      type: object
+      properties:
+        borrowerId:
+          type: integer
+        borrowerName:
+          type: string
+        propertyAddress:
+          type: string
+        creditLimit:
+          type: number
+        interestRate:
+          type: number
+        drawPeriodEnd:
+          type: string
+        repaymentPeriodEnd:
+          type: string
+        ltv:
+          type: ["number", "null"]
+        creditScore:
+          type: ["integer", "null"]
+        loanOfficer:
+          type: string
+      required:
+        - borrowerId
+        - borrowerName
+        - propertyAddress
+        - creditLimit
+        - interestRate
+        - drawPeriodEnd
+        - repaymentPeriodEnd
+        - loanOfficer
+
+    UpdateHelocBody:
+      type: object
+      properties:
+        availableCredit:
+          type: ["number", "null"]
+        drawnAmount:
+          type: ["number", "null"]
+        interestRate:
+          type: ["number", "null"]
+        minimumPayment:
+          type: ["number", "null"]
+        nextPaymentDate:
+          type: ["string", "null"]
+        nextPaymentAmount:
+          type: ["number", "null"]
+        stage:
+          type: ["string", "null"]
+        status:
+          type: ["string", "null"]
+        processor:
+          type: ["string", "null"]
+
+    LoanTask:
+      type: object
+      properties:
+        id:
+          type: integer
+        loanId:
+          type: integer
+        loanNumber:
+          type: string
+        borrowerName:
+          type: string
+        taskType:
+          type: string
+        description:
+          type: string
+        dueDate:
+          type: ["string", "null"]
+        assignedTo:
+          type: ["string", "null"]
+        status:
+          type: string
+        priority:
+          type: string
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - loanId
+        - loanNumber
+        - borrowerName
+        - taskType
         - description
-        - actor
-        - timestamp
+        - status
+        - priority
+        - createdAt
+        - updatedAt
+
+    CreateTaskBody:
+      type: object
+      properties:
+        loanId:
+          type: integer
+        loanNumber:
+          type: string
+        borrowerName:
+          type: string
+        taskType:
+          type: string
+        description:
+          type: string
+        dueDate:
+          type: ["string", "null"]
+        assignedTo:
+          type: ["string", "null"]
+        priority:
+          type: string
+      required: [loanId, loanNumber, borrowerName, taskType, description]
+
+    UpdateTaskBody:
+      type: object
+      properties:
+        status:
+          type: ["string", "null"]
+        priority:
+          type: ["string", "null"]
+        assignedTo:
+          type: ["string", "null"]
+        dueDate:
+          type: ["string", "null"]
+        description:
+          type: ["string", "null"]

@@ -22,26 +22,36 @@ import type {
   Borrower,
   CopilotRuntimeBody,
   CreateBorrowerBody,
+  CreateEscrowBody,
+  CreateHelocBody,
   CreateLoanBody,
   CreateLoanNoteBody,
+  CreateTaskBody,
+  EscrowAccount,
   GetPipelineActivityParams,
   GetRatesParams,
   HealthStatus,
+  HelocAccount,
   KnowledgeArticle,
   ListBorrowersParams,
   ListKnowledgeArticlesParams,
   ListLoansParams,
   ListLoansResponse,
+  ListTasksParams,
   Loan,
   LoanDocument,
   LoanNote,
   LoanProduct,
+  LoanTask,
   MortgageRate,
   PipelineSummary,
   RateHistoryPoint,
+  UpdateEscrowBody,
+  UpdateHelocBody,
   UpdateLoanBody,
   UpdateLoanDocumentBody,
   UpdateLoanStatusBody,
+  UpdateTaskBody,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -1781,7 +1791,7 @@ export function useGetKnowledgeArticle<
 }
 
 /**
- * @summary Pipeline overview — counts, values, stage breakdown
+ * @summary Operations pipeline overview
  */
 export const getGetPipelineSummaryUrl = () => {
   return `/api/pipeline/summary`;
@@ -1832,7 +1842,7 @@ export type GetPipelineSummaryQueryResult = NonNullable<
 export type GetPipelineSummaryQueryError = ErrorType<unknown>;
 
 /**
- * @summary Pipeline overview — counts, values, stage breakdown
+ * @summary Operations pipeline overview
  */
 
 export function useGetPipelineSummary<
@@ -1954,6 +1964,931 @@ export function useGetPipelineActivity<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary List all escrow accounts
+ */
+export const getListEscrowUrl = () => {
+  return `/api/escrow`;
+};
+
+export const listEscrow = async (
+  options?: RequestInit,
+): Promise<EscrowAccount[]> => {
+  return customFetch<EscrowAccount[]>(getListEscrowUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListEscrowQueryKey = () => {
+  return [`/api/escrow`] as const;
+};
+
+export const getListEscrowQueryOptions = <
+  TData = Awaited<ReturnType<typeof listEscrow>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listEscrow>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListEscrowQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listEscrow>>> = ({
+    signal,
+  }) => listEscrow({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listEscrow>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListEscrowQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listEscrow>>
+>;
+export type ListEscrowQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all escrow accounts
+ */
+
+export function useListEscrow<
+  TData = Awaited<ReturnType<typeof listEscrow>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listEscrow>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListEscrowQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create an escrow account
+ */
+export const getCreateEscrowUrl = () => {
+  return `/api/escrow`;
+};
+
+export const createEscrow = async (
+  createEscrowBody: CreateEscrowBody,
+  options?: RequestInit,
+): Promise<EscrowAccount> => {
+  return customFetch<EscrowAccount>(getCreateEscrowUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createEscrowBody),
+  });
+};
+
+export const getCreateEscrowMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createEscrow>>,
+    TError,
+    { data: BodyType<CreateEscrowBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createEscrow>>,
+  TError,
+  { data: BodyType<CreateEscrowBody> },
+  TContext
+> => {
+  const mutationKey = ["createEscrow"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createEscrow>>,
+    { data: BodyType<CreateEscrowBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createEscrow(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateEscrowMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createEscrow>>
+>;
+export type CreateEscrowMutationBody = BodyType<CreateEscrowBody>;
+export type CreateEscrowMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create an escrow account
+ */
+export const useCreateEscrow = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createEscrow>>,
+    TError,
+    { data: BodyType<CreateEscrowBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createEscrow>>,
+  TError,
+  { data: BodyType<CreateEscrowBody> },
+  TContext
+> => {
+  return useMutation(getCreateEscrowMutationOptions(options));
+};
+
+/**
+ * @summary Get escrow account by ID
+ */
+export const getGetEscrowUrl = (id: number) => {
+  return `/api/escrow/${id}`;
+};
+
+export const getEscrow = async (
+  id: number,
+  options?: RequestInit,
+): Promise<EscrowAccount> => {
+  return customFetch<EscrowAccount>(getGetEscrowUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetEscrowQueryKey = (id: number) => {
+  return [`/api/escrow/${id}`] as const;
+};
+
+export const getGetEscrowQueryOptions = <
+  TData = Awaited<ReturnType<typeof getEscrow>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getEscrow>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetEscrowQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getEscrow>>> = ({
+    signal,
+  }) => getEscrow(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof getEscrow>>, TError, TData> & {
+    queryKey: QueryKey;
+  };
+};
+
+export type GetEscrowQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getEscrow>>
+>;
+export type GetEscrowQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get escrow account by ID
+ */
+
+export function useGetEscrow<
+  TData = Awaited<ReturnType<typeof getEscrow>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getEscrow>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetEscrowQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update escrow account
+ */
+export const getUpdateEscrowUrl = (id: number) => {
+  return `/api/escrow/${id}`;
+};
+
+export const updateEscrow = async (
+  id: number,
+  updateEscrowBody: UpdateEscrowBody,
+  options?: RequestInit,
+): Promise<EscrowAccount> => {
+  return customFetch<EscrowAccount>(getUpdateEscrowUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateEscrowBody),
+  });
+};
+
+export const getUpdateEscrowMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateEscrow>>,
+    TError,
+    { id: number; data: BodyType<UpdateEscrowBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateEscrow>>,
+  TError,
+  { id: number; data: BodyType<UpdateEscrowBody> },
+  TContext
+> => {
+  const mutationKey = ["updateEscrow"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateEscrow>>,
+    { id: number; data: BodyType<UpdateEscrowBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateEscrow(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateEscrowMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateEscrow>>
+>;
+export type UpdateEscrowMutationBody = BodyType<UpdateEscrowBody>;
+export type UpdateEscrowMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update escrow account
+ */
+export const useUpdateEscrow = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateEscrow>>,
+    TError,
+    { id: number; data: BodyType<UpdateEscrowBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateEscrow>>,
+  TError,
+  { id: number; data: BodyType<UpdateEscrowBody> },
+  TContext
+> => {
+  return useMutation(getUpdateEscrowMutationOptions(options));
+};
+
+/**
+ * @summary List all HELOC accounts
+ */
+export const getListHelocUrl = () => {
+  return `/api/heloc`;
+};
+
+export const listHeloc = async (
+  options?: RequestInit,
+): Promise<HelocAccount[]> => {
+  return customFetch<HelocAccount[]>(getListHelocUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListHelocQueryKey = () => {
+  return [`/api/heloc`] as const;
+};
+
+export const getListHelocQueryOptions = <
+  TData = Awaited<ReturnType<typeof listHeloc>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof listHeloc>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListHelocQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listHeloc>>> = ({
+    signal,
+  }) => listHeloc({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listHeloc>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListHelocQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listHeloc>>
+>;
+export type ListHelocQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all HELOC accounts
+ */
+
+export function useListHeloc<
+  TData = Awaited<ReturnType<typeof listHeloc>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof listHeloc>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListHelocQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a HELOC application
+ */
+export const getCreateHelocUrl = () => {
+  return `/api/heloc`;
+};
+
+export const createHeloc = async (
+  createHelocBody: CreateHelocBody,
+  options?: RequestInit,
+): Promise<HelocAccount> => {
+  return customFetch<HelocAccount>(getCreateHelocUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createHelocBody),
+  });
+};
+
+export const getCreateHelocMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createHeloc>>,
+    TError,
+    { data: BodyType<CreateHelocBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createHeloc>>,
+  TError,
+  { data: BodyType<CreateHelocBody> },
+  TContext
+> => {
+  const mutationKey = ["createHeloc"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createHeloc>>,
+    { data: BodyType<CreateHelocBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createHeloc(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateHelocMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createHeloc>>
+>;
+export type CreateHelocMutationBody = BodyType<CreateHelocBody>;
+export type CreateHelocMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a HELOC application
+ */
+export const useCreateHeloc = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createHeloc>>,
+    TError,
+    { data: BodyType<CreateHelocBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createHeloc>>,
+  TError,
+  { data: BodyType<CreateHelocBody> },
+  TContext
+> => {
+  return useMutation(getCreateHelocMutationOptions(options));
+};
+
+/**
+ * @summary Get HELOC account by ID
+ */
+export const getGetHelocUrl = (id: number) => {
+  return `/api/heloc/${id}`;
+};
+
+export const getHeloc = async (
+  id: number,
+  options?: RequestInit,
+): Promise<HelocAccount> => {
+  return customFetch<HelocAccount>(getGetHelocUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetHelocQueryKey = (id: number) => {
+  return [`/api/heloc/${id}`] as const;
+};
+
+export const getGetHelocQueryOptions = <
+  TData = Awaited<ReturnType<typeof getHeloc>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getHeloc>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetHelocQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getHeloc>>> = ({
+    signal,
+  }) => getHeloc(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof getHeloc>>, TError, TData> & {
+    queryKey: QueryKey;
+  };
+};
+
+export type GetHelocQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getHeloc>>
+>;
+export type GetHelocQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get HELOC account by ID
+ */
+
+export function useGetHeloc<
+  TData = Awaited<ReturnType<typeof getHeloc>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getHeloc>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetHelocQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update HELOC account
+ */
+export const getUpdateHelocUrl = (id: number) => {
+  return `/api/heloc/${id}`;
+};
+
+export const updateHeloc = async (
+  id: number,
+  updateHelocBody: UpdateHelocBody,
+  options?: RequestInit,
+): Promise<HelocAccount> => {
+  return customFetch<HelocAccount>(getUpdateHelocUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateHelocBody),
+  });
+};
+
+export const getUpdateHelocMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateHeloc>>,
+    TError,
+    { id: number; data: BodyType<UpdateHelocBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateHeloc>>,
+  TError,
+  { id: number; data: BodyType<UpdateHelocBody> },
+  TContext
+> => {
+  const mutationKey = ["updateHeloc"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateHeloc>>,
+    { id: number; data: BodyType<UpdateHelocBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateHeloc(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateHelocMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateHeloc>>
+>;
+export type UpdateHelocMutationBody = BodyType<UpdateHelocBody>;
+export type UpdateHelocMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update HELOC account
+ */
+export const useUpdateHeloc = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateHeloc>>,
+    TError,
+    { id: number; data: BodyType<UpdateHelocBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateHeloc>>,
+  TError,
+  { id: number; data: BodyType<UpdateHelocBody> },
+  TContext
+> => {
+  return useMutation(getUpdateHelocMutationOptions(options));
+};
+
+/**
+ * @summary List operational tasks
+ */
+export const getListTasksUrl = (params?: ListTasksParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/tasks?${stringifiedParams}`
+    : `/api/tasks`;
+};
+
+export const listTasks = async (
+  params?: ListTasksParams,
+  options?: RequestInit,
+): Promise<LoanTask[]> => {
+  return customFetch<LoanTask[]>(getListTasksUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListTasksQueryKey = (params?: ListTasksParams) => {
+  return [`/api/tasks`, ...(params ? [params] : [])] as const;
+};
+
+export const getListTasksQueryOptions = <
+  TData = Awaited<ReturnType<typeof listTasks>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListTasksParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listTasks>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListTasksQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listTasks>>> = ({
+    signal,
+  }) => listTasks(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listTasks>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListTasksQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listTasks>>
+>;
+export type ListTasksQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List operational tasks
+ */
+
+export function useListTasks<
+  TData = Awaited<ReturnType<typeof listTasks>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListTasksParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listTasks>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListTasksQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create an operational task
+ */
+export const getCreateTaskUrl = () => {
+  return `/api/tasks`;
+};
+
+export const createTask = async (
+  createTaskBody: CreateTaskBody,
+  options?: RequestInit,
+): Promise<LoanTask> => {
+  return customFetch<LoanTask>(getCreateTaskUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createTaskBody),
+  });
+};
+
+export const getCreateTaskMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createTask>>,
+    TError,
+    { data: BodyType<CreateTaskBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createTask>>,
+  TError,
+  { data: BodyType<CreateTaskBody> },
+  TContext
+> => {
+  const mutationKey = ["createTask"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createTask>>,
+    { data: BodyType<CreateTaskBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createTask(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateTaskMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createTask>>
+>;
+export type CreateTaskMutationBody = BodyType<CreateTaskBody>;
+export type CreateTaskMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create an operational task
+ */
+export const useCreateTask = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createTask>>,
+    TError,
+    { data: BodyType<CreateTaskBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createTask>>,
+  TError,
+  { data: BodyType<CreateTaskBody> },
+  TContext
+> => {
+  return useMutation(getCreateTaskMutationOptions(options));
+};
+
+/**
+ * @summary Update task status or details
+ */
+export const getUpdateTaskUrl = (id: number) => {
+  return `/api/tasks/${id}`;
+};
+
+export const updateTask = async (
+  id: number,
+  updateTaskBody: UpdateTaskBody,
+  options?: RequestInit,
+): Promise<LoanTask> => {
+  return customFetch<LoanTask>(getUpdateTaskUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateTaskBody),
+  });
+};
+
+export const getUpdateTaskMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateTask>>,
+    TError,
+    { id: number; data: BodyType<UpdateTaskBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateTask>>,
+  TError,
+  { id: number; data: BodyType<UpdateTaskBody> },
+  TContext
+> => {
+  const mutationKey = ["updateTask"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateTask>>,
+    { id: number; data: BodyType<UpdateTaskBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateTask(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateTaskMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateTask>>
+>;
+export type UpdateTaskMutationBody = BodyType<UpdateTaskBody>;
+export type UpdateTaskMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update task status or details
+ */
+export const useUpdateTask = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateTask>>,
+    TError,
+    { id: number; data: BodyType<UpdateTaskBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateTask>>,
+  TError,
+  { id: number; data: BodyType<UpdateTaskBody> },
+  TContext
+> => {
+  return useMutation(getUpdateTaskMutationOptions(options));
+};
 
 /**
  * @summary CopilotKit AG-UI runtime endpoint

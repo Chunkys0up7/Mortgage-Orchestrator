@@ -34,10 +34,12 @@ export default function LoansList() {
           <h1 className="text-3xl font-bold tracking-tight">Loan Pipeline</h1>
           <p className="text-muted-foreground">Manage and track all active applications.</p>
         </div>
-        <Button>
-          <Plus className="w-4 h-4 mr-2" />
-          New Application
-        </Button>
+        <Link href="/new-loan">
+          <Button>
+            <Plus className="w-4 h-4 mr-2" />
+            New Application
+          </Button>
+        </Link>
       </div>
 
       <div className="flex items-center gap-4 bg-card p-2 rounded-lg border shadow-sm">
@@ -89,12 +91,12 @@ export default function LoansList() {
               data?.loans.map((loan) => (
                 <TableRow key={loan.id} className="hover:bg-muted/30 transition-colors group cursor-pointer">
                   <TableCell className="font-medium text-muted-foreground">
-                    <Link href={`/loans/${loan.id}`} className="hover:text-primary transition-colors block">
+                    <Link href={`/pipeline/${loan.id}`} className="hover:text-primary transition-colors block">
                       {loan.loanNumber}
                     </Link>
                   </TableCell>
                   <TableCell>
-                    <Link href={`/loans/${loan.id}`} className="block">
+                    <Link href={`/pipeline/${loan.id}`} className="block">
                       <div className="font-medium group-hover:text-primary transition-colors">{loan.borrowerName}</div>
                     </Link>
                   </TableCell>

@@ -45,7 +45,7 @@ const STAGES = [
 ];
 
 export default function LoanDetail() {
-  const [, params] = useRoute("/loans/:id");
+  const [, params] = useRoute("/pipeline/:id");
   const loanId = params?.id ? parseInt(params.id) : 0;
   const queryClient = useQueryClient();
 

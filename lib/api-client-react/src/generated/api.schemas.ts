@@ -65,6 +65,16 @@ export interface CreateLoanBody {
   /** @nullable */
   downPayment?: number | null;
   loanOfficer: string;
+  /** @nullable */
+  interestRate?: number | null;
+  /** @nullable */
+  creditScore?: number | null;
+  /** @nullable */
+  ltv?: number | null;
+  /** @nullable */
+  dti?: number | null;
+  /** @nullable */
+  productId?: number | null;
 }
 
 export interface UpdateLoanBody {
@@ -247,6 +257,10 @@ export interface PipelineSummary {
   pendingDocuments: number;
   approvedLoans: number;
   averageCreditScore: number;
+  openTasks: number;
+  escrowDisbursementsThisMonth: number;
+  helocAccounts: number;
+  totalHelocCredit: number;
 }
 
 export interface ActivityItem {
@@ -260,8 +274,176 @@ export interface ActivityItem {
   timestamp: string;
 }
 
+export interface EscrowAccount {
+  id: number;
+  loanId: number;
+  loanNumber: string;
+  borrowerName: string;
+  propertyAddress: string;
+  propertyTaxAnnual: number;
+  insuranceAnnual: number;
+  hoaAnnual: number;
+  monthlyEscrowPayment: number;
+  balance: number;
+  /** @nullable */
+  nextDisbursementDate?: string | null;
+  /** @nullable */
+  nextDisbursementType?: string | null;
+  /** @nullable */
+  nextDisbursementAmount?: number | null;
+  status: string;
+  /** @nullable */
+  lastAnalysisDate?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateEscrowBody {
+  loanId: number;
+  loanNumber: string;
+  borrowerName: string;
+  propertyAddress: string;
+  propertyTaxAnnual: number;
+  insuranceAnnual: number;
+  hoaAnnual?: number;
+}
+
+export interface UpdateEscrowBody {
+  /** @nullable */
+  balance?: number | null;
+  /** @nullable */
+  status?: string | null;
+  /** @nullable */
+  nextDisbursementDate?: string | null;
+  /** @nullable */
+  nextDisbursementType?: string | null;
+  /** @nullable */
+  nextDisbursementAmount?: number | null;
+  /** @nullable */
+  lastAnalysisDate?: string | null;
+  /** @nullable */
+  propertyTaxAnnual?: number | null;
+  /** @nullable */
+  insuranceAnnual?: number | null;
+  /** @nullable */
+  monthlyEscrowPayment?: number | null;
+}
+
+export interface HelocAccount {
+  id: number;
+  loanNumber: string;
+  borrowerId: number;
+  borrowerName: string;
+  propertyAddress: string;
+  creditLimit: number;
+  availableCredit: number;
+  drawnAmount: number;
+  interestRate: number;
+  drawPeriodEnd: string;
+  repaymentPeriodEnd: string;
+  /** @nullable */
+  minimumPayment?: number | null;
+  /** @nullable */
+  nextPaymentDate?: string | null;
+  /** @nullable */
+  nextPaymentAmount?: number | null;
+  stage: string;
+  status: string;
+  /** @nullable */
+  ltv?: number | null;
+  /** @nullable */
+  creditScore?: number | null;
+  loanOfficer: string;
+  /** @nullable */
+  processor?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateHelocBody {
+  borrowerId: number;
+  borrowerName: string;
+  propertyAddress: string;
+  creditLimit: number;
+  interestRate: number;
+  drawPeriodEnd: string;
+  repaymentPeriodEnd: string;
+  /** @nullable */
+  ltv?: number | null;
+  /** @nullable */
+  creditScore?: number | null;
+  loanOfficer: string;
+}
+
+export interface UpdateHelocBody {
+  /** @nullable */
+  availableCredit?: number | null;
+  /** @nullable */
+  drawnAmount?: number | null;
+  /** @nullable */
+  interestRate?: number | null;
+  /** @nullable */
+  minimumPayment?: number | null;
+  /** @nullable */
+  nextPaymentDate?: string | null;
+  /** @nullable */
+  nextPaymentAmount?: number | null;
+  /** @nullable */
+  stage?: string | null;
+  /** @nullable */
+  status?: string | null;
+  /** @nullable */
+  processor?: string | null;
+}
+
+export interface LoanTask {
+  id: number;
+  loanId: number;
+  loanNumber: string;
+  borrowerName: string;
+  taskType: string;
+  description: string;
+  /** @nullable */
+  dueDate?: string | null;
+  /** @nullable */
+  assignedTo?: string | null;
+  status: string;
+  priority: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateTaskBody {
+  loanId: number;
+  loanNumber: string;
+  borrowerName: string;
+  taskType: string;
+  description: string;
+  /** @nullable */
+  dueDate?: string | null;
+  /** @nullable */
+  assignedTo?: string | null;
+  priority?: string;
+}
+
+export interface UpdateTaskBody {
+  /** @nullable */
+  status?: string | null;
+  /** @nullable */
+  priority?: string | null;
+  /** @nullable */
+  assignedTo?: string | null;
+  /** @nullable */
+  dueDate?: string | null;
+  /** @nullable */
+  description?: string | null;
+}
+
 export type ListLoansParams = {
-  status?: string;
+  /**
+   * @nullable
+   */
+  status?: string | null;
   /**
    * @nullable
    */
@@ -297,6 +479,21 @@ export type ListKnowledgeArticlesParams = {
 
 export type GetPipelineActivityParams = {
   limit?: number;
+};
+
+export type ListTasksParams = {
+  /**
+   * @nullable
+   */
+  status?: string | null;
+  /**
+   * @nullable
+   */
+  assignedTo?: string | null;
+  /**
+   * @nullable
+   */
+  loanId?: number | null;
 };
 
 export type CopilotRuntimeBody = { [key: string]: unknown };

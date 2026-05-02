@@ -8,8 +8,12 @@ import "@copilotkit/react-ui/styles.css";
 
 import { Layout } from "@/components/layout";
 import Dashboard from "@/pages/dashboard";
+import NewLoan from "@/pages/new-loan";
 import LoansList from "@/pages/loans/index";
 import LoanDetail from "@/pages/loans/[id]";
+import Escrow from "@/pages/escrow";
+import Heloc from "@/pages/heloc";
+import Tasks from "@/pages/tasks";
 import BorrowersList from "@/pages/borrowers/index";
 import BorrowerDetail from "@/pages/borrowers/[id]";
 import RatesSheet from "@/pages/rates";
@@ -24,8 +28,12 @@ function AppRouter() {
     <Layout>
       <Switch>
         <Route path="/" component={Dashboard} />
-        <Route path="/loans" component={LoansList} />
-        <Route path="/loans/:id" component={LoanDetail} />
+        <Route path="/new-loan" component={NewLoan} />
+        <Route path="/pipeline" component={LoansList} />
+        <Route path="/pipeline/:id" component={LoanDetail} />
+        <Route path="/escrow" component={Escrow} />
+        <Route path="/heloc" component={Heloc} />
+        <Route path="/tasks" component={Tasks} />
         <Route path="/borrowers" component={BorrowersList} />
         <Route path="/borrowers/:id" component={BorrowerDetail} />
         <Route path="/rates" component={RatesSheet} />
@@ -45,10 +53,18 @@ function App() {
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <AppRouter />
           </WouterRouter>
-          <CopilotPopup 
-            instructions="You are Pursuit AI, a multi-agent assistant for loan officers. Help them navigate loans, check guidelines, compare products, and manage their pipeline."
-            defaultOpen={false} 
-            labels={{ title: "Pursuit AI", initial: "How can I help you manage your pipeline today?" }}
+          <CopilotPopup
+            instructions={`You are Pursuit AI, an operations assistant for Pursuit Bank mortgage loan operations. You help operations staff:
+- Manage the daily task queue (urgent tasks, conditions, document requests)
+- Track escrow accounts: property tax disbursements, insurance payments, shortage analysis, escrow analysis cycles
+- Process HELOC applications and manage draw requests, draw periods, repayment periods
+- Originate new loan applications: guide through borrower intake, property details, product selection
+- Monitor the loan pipeline: stage progression, processor assignments, closing dates
+- Answer questions about mortgage products, underwriting guidelines, FHA/VA/USDA requirements, Fannie Mae/Freddie Mac guidelines
+- Calculate LTV, DTI, monthly escrow payments, HELOC utilization
+You have access to the full pipeline, escrow accounts, HELOC accounts, and task queue.`}
+            defaultOpen={false}
+            labels={{ title: "Pursuit AI — Operations", initial: "Hi! I can help you manage escrow, process HELOC applications, create loan tasks, or answer guideline questions. What do you need?" }}
           />
           <Toaster />
         </TooltipProvider>
