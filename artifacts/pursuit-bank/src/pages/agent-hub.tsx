@@ -850,6 +850,20 @@ export default function AgentHub() {
     return () => timers.forEach(clearTimeout);
   }, [activeAgentId]);
 
+  // ── "/" shortcut → focus chat input ──────────────────────────────────
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "/") return;
+      const active = document.activeElement;
+      if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")) return;
+      e.preventDefault();
+      const input = document.querySelector<HTMLElement>(".copilot-chat-panel textarea");
+      input?.focus();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   // ── Detect when AI finishes → mark agent complete ─────────────────────
   useEffect(() => {
     if (!isLoading && activeAgentId) {
@@ -999,11 +1013,15 @@ export default function AgentHub() {
               <Zap className="w-3.5 h-3.5 text-white" />
             </div>
             <span className="text-sm font-semibold text-slate-800">Pursuit AI</span>
-            {isLoading && (
+            {isLoading ? (
               <div className="ml-auto flex items-center gap-1.5 text-xs text-slate-500">
                 <div className="w-3.5 h-3.5 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
                 <span>Thinking...</span>
               </div>
+            ) : (
+              <kbd className="ml-auto inline-flex items-center gap-1 px-1.5 py-0.5 rounded border border-slate-200 bg-slate-50 text-[10px] font-mono text-slate-400 select-none">
+                /
+              </kbd>
             )}
           </div>
           <div className="flex-1 overflow-hidden copilot-chat-panel">
