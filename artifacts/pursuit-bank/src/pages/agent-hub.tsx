@@ -690,7 +690,7 @@ export default function AgentHub() {
       const resp = await fetch(`/api/borrowers?search=${encodeURIComponent(name)}`);
       const borrowers = await resp.json();
       if (!Array.isArray(borrowers) || borrowers.length === 0) {
-        return `No borrower found matching "${name}". They are not in the system. Closest names in the system: ${["Elena Castillo", "Robert Chen", "Amanda Foster", "David Kim", "Patricia Monroe", "Sarah Nguyen", "Michael Thornton", "James Wallace"].join(", ")}. Ask the user if the name might be spelled differently, or if this is a brand new customer not yet in the system.`;
+        return `No borrower found matching "${name}". They are not in the system. Closest names in the system: ${["Elena Castillo", "Robert Chen", "Amanda Foster", "David Kim", "Patricia Monroe", "Sarah Nguyen", "Michael Thornton", "James Wallace", "James Paterson", "Lisa Chen", "Marcus Williams", "Jennifer Santos", "David Park"].join(", ")}. Ask the user if the name might be spelled differently, or if this is a brand new customer not yet in the system.`;
       }
       return JSON.stringify(borrowers.map((b: any) => ({
         id: b.id,

@@ -49,13 +49,23 @@ lib/
 Tables: `borrowers`, `loan_products`, `loans`, `loan_notes`, `loan_documents`, `mortgage_rates`, `knowledge_articles`, `activity_log`
 
 ### Seed Data
-- 8 borrowers (CRM mock: Salesforce, HubSpot, Manual)
+- 13 borrowers total (8 original + 5 added via `pnpm --filter @workspace/scripts run seed`)
 - 8 loan products (conventional 30/15yr, FHA, VA, Jumbo, 5/1 ARM, 7/1 ARM, USDA)
 - 10 mortgage rate entries (all product types)
-- 8 active loans across all pipeline stages
+- 13 active loans across all pipeline stages
 - 10 loan documents for loan #1 (Michael Thornton)
 - 10 activity log entries
 - 12 knowledge base articles
+
+### New Test Clients (added via seed script)
+- **James Paterson** (id 9) — existing homeowner, funded 2022 conventional @ 3.875%, active escrow, prime HELOC candidate (credit 742, 62% LTV)
+- **Lisa Chen** (id 10) — jumbo purchase $980k, underwriting, 2 urgent tasks (second appraisal, W-2 gap)
+- **Marcus Williams** (id 11) — cash-out refi $340k, processing, self-employed (2 urgent tasks: business tax returns, DTI reserves)
+- **Jennifer Santos** (id 12) — FHA purchase $198.5k, application stage, 2 urgent tasks (disclosure, down payment sourcing)
+- **David Park** (id 13) — existing funded mortgage, HELOC $300k in underwriting
+
+### Re-seeding
+Run `pnpm --filter @workspace/scripts run seed` — script is idempotent (skips existing records by email/loanNumber).
 
 ## API Routes
 All routes prefixed with `/api`:
