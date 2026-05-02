@@ -51,34 +51,34 @@
 }
 
 :root {
-  --background: 222 47% 7%;
-  --foreground: 210 40% 92%;
-  --border: 217 33% 15%;
-  --input: 217 33% 15%;
+  --background: 210 20% 98%;
+  --foreground: 222 47% 11%;
+  --border: 220 13% 91%;
+  --input: 220 13% 91%;
   --ring: 221 83% 53%;
 
-  --card: 222 47% 10%;
-  --card-foreground: 210 40% 92%;
-  --card-border: 217 33% 17%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+  --card-border: 220 13% 91%;
 
-  --popover: 222 47% 10%;
-  --popover-foreground: 210 40% 92%;
-  --popover-border: 217 33% 17%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
+  --popover-border: 220 13% 91%;
 
-  --primary: 221 83% 60%;
-  --primary-foreground: 210 40% 98%;
+  --primary: 221 83% 53%;
+  --primary-foreground: 0 0% 100%;
 
-  --secondary: 217 33% 15%;
-  --secondary-foreground: 210 40% 92%;
+  --secondary: 220 14% 96%;
+  --secondary-foreground: 222 47% 20%;
 
-  --muted: 217 33% 14%;
-  --muted-foreground: 215 20% 50%;
+  --muted: 220 14% 96%;
+  --muted-foreground: 220 9% 46%;
 
-  --accent: 43 96% 56%;
-  --accent-foreground: 222 47% 7%;
+  --accent: 221 83% 53%;
+  --accent-foreground: 0 0% 100%;
 
   --destructive: 0 72% 51%;
-  --destructive-foreground: 210 40% 98%;
+  --destructive-foreground: 0 0% 100%;
 
   --chart-1: 221 83% 53%;
   --chart-2: 43 96% 56%;
@@ -92,16 +92,16 @@
   --radius: 0.5rem;
 }
 
-/* CopilotKit dark theme overrides */
+/* CopilotKit light theme */
 :root {
-  --copilot-kit-primary-color: hsl(221 83% 60%);
-  --copilot-kit-contrast-color: hsl(210 40% 98%);
-  --copilot-kit-background-color: hsl(222 47% 8%);
-  --copilot-kit-muted-color: hsl(217 33% 15%);
-  --copilot-kit-separator-color: hsl(217 33% 17%);
-  --copilot-kit-scrollbar-color: hsl(217 33% 22%);
-  --copilot-kit-response-button-color: hsl(215 20% 55%);
-  --copilot-kit-response-button-background-color: hsl(217 33% 15%);
+  --copilot-kit-primary-color: #2563eb;
+  --copilot-kit-contrast-color: #ffffff;
+  --copilot-kit-background-color: #ffffff;
+  --copilot-kit-muted-color: #f8fafc;
+  --copilot-kit-separator-color: #e2e8f0;
+  --copilot-kit-scrollbar-color: #e2e8f0;
+  --copilot-kit-response-button-color: #64748b;
+  --copilot-kit-response-button-background-color: #f1f5f9;
 }
 
 /* Make CopilotChat fill its container */
@@ -117,20 +117,20 @@
   border: none;
 }
 
-/* Agent step animations */
+/* Agent step active pulse — subtle ring, not neon glow */
 @keyframes step-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
-  50% { box-shadow: 0 0 0 6px rgba(59, 130, 246, 0); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.25); }
+  50% { box-shadow: 0 0 0 5px rgba(37, 99, 235, 0); }
 }
 
 .step-active {
-  animation: step-pulse 1.5s ease-in-out infinite;
+  animation: step-pulse 1.6s ease-in-out infinite;
 }
 
 @keyframes flow-arrow {
-  0% { opacity: 0.3; transform: translateX(-4px); }
+  0% { opacity: 0.4; transform: translateX(-3px); }
   50% { opacity: 1; transform: translateX(0); }
-  100% { opacity: 0.3; transform: translateX(4px); }
+  100% { opacity: 0.4; transform: translateX(3px); }
 }
 
 .arrow-active {

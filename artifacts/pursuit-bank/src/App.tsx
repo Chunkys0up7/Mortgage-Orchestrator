@@ -8,7 +8,7 @@ const queryClient = new QueryClient();
 
 export default function App() {
   return (
-    <div className="dark" style={{ colorScheme: "dark" }}>
+    <div>
       <CopilotKit runtimeUrl="/api/copilot">
         <QueryClientProvider client={queryClient}>
           <AgentHub />

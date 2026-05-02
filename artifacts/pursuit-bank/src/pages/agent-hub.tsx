@@ -45,9 +45,9 @@ const AGENTS: AgentDef[] = [
     name: "Escrow Analysis",
     description: "Reviews all escrow accounts, flags shortages and surpluses, recalculates monthly payments, generates analysis letters and creates follow-up tasks.",
     icon: Building2,
-    accentColor: "bg-blue-500/15",
-    accentText: "text-blue-400",
-    borderActive: "border-blue-500/60",
+    accentColor: "bg-blue-50",
+    accentText: "text-blue-600",
+    borderActive: "border-blue-300",
     steps: [
       { id: "fetch", label: "Fetch Accounts", icon: Database },
       { id: "calc", label: "Calc Payments", icon: Calculator },
@@ -63,9 +63,9 @@ const AGENTS: AgentDef[] = [
     name: "HELOC Processing",
     description: "Reviews pending HELOC applications, checks credit scores and LTV ratios against guidelines, generates approval conditions and updates status.",
     icon: CreditCard,
-    accentColor: "bg-violet-500/15",
-    accentText: "text-violet-400",
-    borderActive: "border-violet-500/60",
+    accentColor: "bg-violet-50",
+    accentText: "text-violet-600",
+    borderActive: "border-violet-300",
     steps: [
       { id: "pull", label: "Pull Applications", icon: Download },
       { id: "credit", label: "Check Credit", icon: Shield },
@@ -81,9 +81,9 @@ const AGENTS: AgentDef[] = [
     name: "Loan Intake",
     description: "Guides new loan applications through intake: borrower verification, DTI calculation, product matching, and document checklist generation.",
     icon: FilePlus2,
-    accentColor: "bg-emerald-500/15",
-    accentText: "text-emerald-400",
-    borderActive: "border-emerald-500/60",
+    accentColor: "bg-emerald-50",
+    accentText: "text-emerald-600",
+    borderActive: "border-emerald-300",
     steps: [
       { id: "gather", label: "Gather Info", icon: User },
       { id: "verify", label: "Verify Employment", icon: Briefcase },
@@ -98,9 +98,9 @@ const AGENTS: AgentDef[] = [
     name: "Task Triage",
     description: "Sorts the full task queue by urgency and due date, escalates overdue items, reassigns unattended tasks, and generates a prioritised daily action plan.",
     icon: ClipboardList,
-    accentColor: "bg-amber-500/15",
-    accentText: "text-amber-400",
-    borderActive: "border-amber-500/60",
+    accentColor: "bg-amber-50",
+    accentText: "text-amber-600",
+    borderActive: "border-amber-300",
     steps: [
       { id: "load", label: "Load Queue", icon: Database },
       { id: "overdue", label: "Check Overdue", icon: Clock },
@@ -115,9 +115,9 @@ const AGENTS: AgentDef[] = [
     name: "Pipeline Monitor",
     description: "Scans all active loans for stage duration, identifies stalled files, flags closings at risk, and reports on pipeline health.",
     icon: Activity,
-    accentColor: "bg-rose-500/15",
-    accentText: "text-rose-400",
-    borderActive: "border-rose-500/60",
+    accentColor: "bg-rose-50",
+    accentText: "text-rose-600",
+    borderActive: "border-rose-300",
     steps: [
       { id: "scan", label: "Scan Pipeline", icon: Search },
       { id: "age", label: "Check Stage Age", icon: CalendarClock },
@@ -132,9 +132,9 @@ const AGENTS: AgentDef[] = [
     name: "Document Review",
     description: "Checks loan file completeness against document checklists, identifies missing items, generates outstanding condition requests.",
     icon: Files,
-    accentColor: "bg-cyan-500/15",
-    accentText: "text-cyan-400",
-    borderActive: "border-cyan-500/60",
+    accentColor: "bg-cyan-50",
+    accentText: "text-cyan-600",
+    borderActive: "border-cyan-300",
     steps: [
       { id: "load", label: "Load Files", icon: FolderOpen },
       { id: "check", label: "Check Checklist", icon: ClipboardCheck },
@@ -180,22 +180,22 @@ function WorkflowGraph({
         const isActive = runState.activeStep === i;
         const isError = runState.status === "error" && isActive;
 
-        let nodeClass = "bg-[hsl(217_33%_13%)] border-[hsl(217_33%_20%)] text-[hsl(215_20%_45%)]";
-        let labelClass = "text-[hsl(215_20%_38%)]";
-        let iconClass = "text-[hsl(215_20%_40%)]";
+        let nodeClass = "bg-slate-50 border-slate-200 text-slate-400";
+        let labelClass = "text-slate-400";
+        let iconClass = "text-slate-400";
 
         if (isError) {
-          nodeClass = "bg-red-950/60 border-red-500/60 text-red-300";
-          labelClass = "text-red-400";
-          iconClass = "text-red-400";
+          nodeClass = "bg-red-50 border-red-300 text-red-500";
+          labelClass = "text-red-500";
+          iconClass = "text-red-500";
         } else if (isComplete) {
-          nodeClass = "bg-emerald-950/60 border-emerald-500/50 text-emerald-300";
-          labelClass = "text-emerald-400/80";
-          iconClass = "text-emerald-400";
+          nodeClass = "bg-emerald-50 border-emerald-300 text-emerald-600";
+          labelClass = "text-emerald-600";
+          iconClass = "text-emerald-600";
         } else if (isActive) {
-          nodeClass = "bg-blue-950/70 border-blue-400/70 text-blue-200 step-active";
-          labelClass = "text-blue-300/90";
-          iconClass = "text-blue-300";
+          nodeClass = "bg-blue-50 border-blue-400 text-blue-600 step-active";
+          labelClass = "text-blue-600";
+          iconClass = "text-blue-600";
         }
 
         const isLastStep = i === steps.length - 1;
@@ -203,7 +203,6 @@ function WorkflowGraph({
 
         return (
           <div key={step.id} className="flex items-center shrink-0">
-            {/* Node */}
             <div className="flex flex-col items-center gap-1">
               <div className={`w-9 h-9 rounded-lg border flex items-center justify-center transition-all duration-500 ${nodeClass}`}>
                 {isComplete ? (
@@ -217,11 +216,10 @@ function WorkflowGraph({
               </span>
             </div>
 
-            {/* Arrow connector */}
             {!isLastStep && (
               <div className={`flex items-center mx-1 mb-4 transition-colors duration-300 ${isArrowActive ? "arrow-active" : ""}`}>
-                <div className={`h-px w-4 ${isArrowActive ? "bg-blue-500/60" : "bg-[hsl(217_33%_18%)]"}`} />
-                <ChevronRight className={`w-3 h-3 -ml-1 ${isArrowActive ? "text-blue-500/60" : "text-[hsl(217_33%_22%)]"}`} />
+                <div className={`h-px w-4 ${isArrowActive ? "bg-blue-400" : "bg-slate-200"}`} />
+                <ChevronRight className={`w-3 h-3 -ml-1 ${isArrowActive ? "text-blue-400" : "text-slate-300"}`} />
               </div>
             )}
           </div>
@@ -234,14 +232,11 @@ function WorkflowGraph({
 // ─── Status Dot ──────────────────────────────────────────────────────────────
 
 function StatusDot({ status }: { status: AgentRunState["status"] }) {
-  if (status === "idle") return <div className="w-2 h-2 rounded-full bg-[hsl(217_33%_28%)]" />;
+  if (status === "idle") return <div className="w-2 h-2 rounded-full bg-slate-300" />;
   if (status === "running") return (
-    <div className="relative w-2 h-2">
-      <div className="absolute inset-0 rounded-full bg-blue-400 animate-ping opacity-75" />
-      <div className="relative w-2 h-2 rounded-full bg-blue-400" />
-    </div>
+    <div className="w-3.5 h-3.5 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
   );
-  if (status === "complete") return <div className="w-2 h-2 rounded-full bg-emerald-400" />;
+  if (status === "complete") return <div className="w-2 h-2 rounded-full bg-emerald-500" />;
   return <div className="w-2 h-2 rounded-full bg-red-400" />;
 }
 
@@ -264,62 +259,60 @@ function AgentCard({
 
   return (
     <div className={`
-      rounded-xl border transition-all duration-300 flex flex-col
+      rounded-xl border transition-all duration-300 flex flex-col bg-white
       ${isRunning
-        ? `border-blue-500/40 bg-[hsl(222_47%_11%)] shadow-lg shadow-blue-500/10`
-        : `border-[hsl(217_33%_17%)] bg-[hsl(222_47%_9%)] hover:border-[hsl(217_33%_24%)]`
+        ? `border-blue-200 shadow-md shadow-blue-100/60 ring-1 ring-blue-200`
+        : `border-slate-200 shadow-sm hover:border-slate-300 hover:shadow`
       }
     `}>
       {/* Header */}
-      <div className="flex items-start justify-between p-4 pb-3">
-        <div className="flex items-center gap-3">
-          <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${agent.accentColor}`}>
-            <agent.icon className={`w-5 h-5 ${agent.accentText}`} />
+      <div className="flex items-start gap-3 p-4 pb-3">
+        <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${agent.accentColor}`}>
+          <agent.icon className={`w-4.5 h-4.5 ${agent.accentText}`} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-slate-800">{agent.name}</h3>
+            <StatusDot status={runState.status} />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-semibold text-[hsl(210_40%_88%)]">{agent.name}</h3>
-              <StatusDot status={runState.status} />
-            </div>
-            <p className="text-xs text-[hsl(215_20%_45%)] mt-0.5 leading-snug line-clamp-2">
-              {agent.description}
-            </p>
-          </div>
+          <p className="text-xs text-slate-500 mt-0.5 leading-snug line-clamp-2">
+            {agent.description}
+          </p>
         </div>
       </div>
 
       {/* Workflow Graph */}
-      <div className="px-4 py-3 border-t border-[hsl(217_33%_14%)]">
-        <div className="text-[9px] font-semibold text-[hsl(215_20%_35%)] uppercase tracking-widest mb-2.5">
+      <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/50">
+        <div className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest mb-2.5">
           Workflow
         </div>
         <WorkflowGraph steps={agent.steps} runState={runState} />
       </div>
 
       {/* Footer */}
-      <div className="flex items-center justify-between px-4 py-3 border-t border-[hsl(217_33%_14%)] mt-auto">
-        <div className="text-xs text-[hsl(215_20%_38%)]">
+      <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100 mt-auto">
+        <div className="text-xs text-slate-400">
           {isRunning && (
-            <span className="text-blue-400 flex items-center gap-1.5">
+            <span className="text-blue-600 flex items-center gap-1.5 font-medium">
               <Zap className="w-3 h-3" />
               Processing...
             </span>
           )}
           {isComplete && runState.lastRunAt && (
-            <span className="text-emerald-400/70 flex items-center gap-1.5">
+            <span className="text-emerald-600 flex items-center gap-1.5">
               <CheckCircle2 className="w-3 h-3" />
               Done · {runState.lastRunAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
             </span>
           )}
           {runState.status === "idle" && (
-            <span className="text-[hsl(215_20%_35%)]">Ready to run</span>
+            <span className="text-slate-400">Ready to run</span>
           )}
         </div>
         <div className="flex gap-2">
           {isComplete && (
             <button
               onClick={() => onRun(agent.id)}
-              className="text-xs px-2.5 py-1.5 rounded-md border border-[hsl(217_33%_20%)] text-[hsl(215_20%_50%)] hover:text-[hsl(210_40%_80%)] hover:border-[hsl(217_33%_28%)] transition-colors flex items-center gap-1"
+              className="text-xs px-2.5 py-1.5 rounded-md border border-slate-200 text-slate-500 hover:text-slate-700 hover:border-slate-300 hover:bg-slate-50 transition-colors flex items-center gap-1"
             >
               <RotateCcw className="w-3 h-3" />
               Re-run
@@ -332,8 +325,8 @@ function AgentCard({
               className={`
                 text-xs px-3 py-1.5 rounded-md font-medium flex items-center gap-1.5 transition-all
                 ${canRun
-                  ? `bg-[hsl(217_33%_17%)] hover:bg-[hsl(217_33%_22%)] text-[hsl(210_40%_85%)] border border-[hsl(217_33%_24%)]`
-                  : `bg-[hsl(217_33%_13%)] text-[hsl(215_20%_35%)] border border-[hsl(217_33%_17%)] cursor-not-allowed`
+                  ? `bg-blue-600 hover:bg-blue-700 text-white shadow-sm`
+                  : `bg-slate-100 text-slate-400 cursor-not-allowed`
                 }
               `}
             >
@@ -342,8 +335,8 @@ function AgentCard({
             </button>
           )}
           {isRunning && (
-            <div className="text-xs px-3 py-1.5 rounded-md border border-blue-500/30 text-blue-400 flex items-center gap-1.5 bg-blue-950/30">
-              <div className="w-2 h-2 rounded-full border border-blue-400 border-t-transparent animate-spin" />
+            <div className="text-xs px-3 py-1.5 rounded-md border border-blue-200 text-blue-600 flex items-center gap-1.5 bg-blue-50 font-medium">
+              <div className="w-3 h-3 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
               Running
             </div>
           )}
@@ -367,13 +360,15 @@ function StatPill({
   alert?: boolean;
 }) {
   return (
-    <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-[hsl(222_47%_9%)] border border-[hsl(217_33%_17%)]">
+    <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-white border border-slate-200 shadow-sm">
       <div>
-        <div className="text-[10px] uppercase tracking-widest text-[hsl(215_20%_38%)] font-semibold">{label}</div>
-        <div className={`text-lg font-bold tabular-nums leading-tight ${alert ? "text-amber-400" : "text-[hsl(210_40%_90%)]"}`}>
+        <div className="text-[10px] uppercase tracking-widest text-slate-400 font-semibold">{label}</div>
+        <div className={`text-lg font-bold tabular-nums leading-tight ${alert ? "text-amber-500" : "text-slate-800"}`}>
           {value}
         </div>
-        {sub && <div className="text-[10px] text-[hsl(215_20%_38%)]">{sub}</div>}
+        {sub && (
+          <div className={`text-[10px] ${alert ? "text-amber-500" : "text-slate-400"}`}>{sub}</div>
+        )}
       </div>
     </div>
   );
@@ -731,30 +726,32 @@ export default function AgentHub() {
   const totalVolume = loanList.reduce((sum: number, l: any) => sum + (l.loanAmount ?? 0), 0);
 
   return (
-    <div className="h-screen flex flex-col bg-[hsl(222_47%_7%)] overflow-hidden">
+    <div className="h-screen flex flex-col bg-slate-50 overflow-hidden">
 
       {/* ── Top Header ────────────────────────────────────────────────── */}
-      <header className="h-12 shrink-0 flex items-center justify-between px-5 border-b border-[hsl(217_33%_13%)] bg-[hsl(222_47%_8%)]">
+      <header className="h-13 shrink-0 flex items-center justify-between px-6 bg-slate-900 border-b border-slate-800">
         <div className="flex items-center gap-3">
-          <div className="w-6 h-6 rounded bg-blue-500/20 border border-blue-500/30 flex items-center justify-center">
-            <Zap className="w-3.5 h-3.5 text-blue-400" />
+          <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center shadow-sm">
+            <Zap className="w-4 h-4 text-white" />
           </div>
-          <span className="text-sm font-bold text-[hsl(210_40%_88%)] tracking-tight">Pursuit Bank</span>
-          <span className="text-[hsl(217_33%_30%)]">·</span>
-          <span className="text-xs text-[hsl(215_20%_45%)] font-medium">Operations AI</span>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-bold text-white tracking-tight">Pursuit Bank</span>
+            <span className="text-slate-600">·</span>
+            <span className="text-xs text-slate-400 font-medium">Operations AI</span>
+          </div>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-5">
           {urgentCount > 0 && (
-            <div className="flex items-center gap-1.5 text-xs text-amber-400">
+            <div className="flex items-center gap-1.5 text-xs text-amber-400 font-medium">
               <AlertCircle className="w-3.5 h-3.5" />
               {urgentCount} urgent {urgentCount === 1 ? "task" : "tasks"}
             </div>
           )}
-          <div className="flex items-center gap-2 text-xs text-[hsl(215_20%_42%)]">
-            <div className="w-5 h-5 rounded-full bg-[hsl(217_33%_22%)] flex items-center justify-center text-[9px] font-bold text-[hsl(210_40%_75%)]">
+          <div className="flex items-center gap-2 text-xs text-slate-400">
+            <div className="w-6 h-6 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center text-[9px] font-bold text-slate-300">
               MS
             </div>
-            Mark Santos
+            <span className="text-slate-300 font-medium">Mark Santos</span>
           </div>
         </div>
       </header>
@@ -763,10 +760,10 @@ export default function AgentHub() {
       <div className="flex-1 flex overflow-hidden">
 
         {/* ── Left: Agent Workspace ───────────────────────────────────── */}
-        <div className="flex-1 flex flex-col overflow-hidden border-r border-[hsl(217_33%_13%)]">
+        <div className="flex-1 flex flex-col overflow-hidden border-r border-slate-200">
 
           {/* Stats bar */}
-          <div className="flex items-center gap-3 px-5 py-3 border-b border-[hsl(217_33%_13%)] overflow-x-auto shrink-0">
+          <div className="flex items-center gap-3 px-5 py-3 bg-white border-b border-slate-200 overflow-x-auto shrink-0">
             <StatPill
               label="Pipeline"
               value={summary?.totalLoans ?? "—"}
@@ -790,9 +787,9 @@ export default function AgentHub() {
               sub="awaiting review"
             />
             <div className="ml-auto shrink-0">
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[hsl(222_47%_9%)] border border-[hsl(217_33%_17%)] text-xs text-[hsl(215_20%_42%)]">
-                <Info className="w-3.5 h-3.5" />
-                Click <strong className="text-[hsl(210_40%_75%)] mx-1">Run Agent</strong> or ask Pursuit AI →
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-500">
+                <Info className="w-3.5 h-3.5 text-slate-400" />
+                Click <strong className="text-slate-700 mx-1">Run Agent</strong> or ask Pursuit AI →
               </div>
             </div>
           </div>
@@ -814,15 +811,16 @@ export default function AgentHub() {
         </div>
 
         {/* ── Right: Always-visible CopilotKit Chat ───────────────────── */}
-        <div className="w-[400px] shrink-0 flex flex-col overflow-hidden">
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-[hsl(217_33%_13%)] bg-[hsl(222_47%_8%)]">
-            <Zap className="w-3.5 h-3.5 text-blue-400" />
-            <span className="text-xs font-semibold text-[hsl(210_40%_80%)]">Pursuit AI</span>
+        <div className="w-[400px] shrink-0 flex flex-col overflow-hidden bg-white">
+          <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-200 bg-white">
+            <div className="w-6 h-6 rounded-md bg-blue-600 flex items-center justify-center">
+              <Zap className="w-3.5 h-3.5 text-white" />
+            </div>
+            <span className="text-sm font-semibold text-slate-800">Pursuit AI</span>
             {isLoading && (
-              <div className="ml-auto flex items-center gap-1.5 text-xs text-blue-400">
-                <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: "0ms" }} />
-                <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: "150ms" }} />
-                <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: "300ms" }} />
+              <div className="ml-auto flex items-center gap-1.5 text-xs text-slate-500">
+                <div className="w-3.5 h-3.5 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
+                <span>Thinking...</span>
               </div>
             )}
           </div>
