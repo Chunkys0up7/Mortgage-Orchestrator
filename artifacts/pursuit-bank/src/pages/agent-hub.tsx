@@ -346,15 +346,23 @@ FINISH: Call report_agent_result with a one-line summary (e.g. "12 files reviewe
 
 // ─── Agent Run State ──────────────────────────────────────────────────────────
 
+interface RunHistoryEntry {
+  timestamp: Date;
+  summary: string;
+  tasksCreated: number;
+  issuesFound: number;
+}
+
 interface AgentRunState {
   status: "idle" | "running" | "complete" | "error";
   activeStep: number;
   completedSteps: Set<number>;
   lastRunAt: Date | null;
   summary: string | null;
-  liveStatus: string | null;   // what the AI is doing right now
+  liveStatus: string | null;
   tasksCreated: number;
   issuesFound: number;
+  runHistory: RunHistoryEntry[];
 }
 
 const defaultState = (): AgentRunState => ({
@@ -366,6 +374,7 @@ const defaultState = (): AgentRunState => ({
   liveStatus: null,
   tasksCreated: 0,
   issuesFound: 0,
+  runHistory: [],
 });
 
 // ─── Workflow Graph Component ─────────────────────────────────────────────────
@@ -559,6 +568,48 @@ function AgentCard({
         <div className="border-t border-emerald-100 bg-emerald-50/50 px-4 py-2.5 flex items-start gap-2">
           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 mt-0.5 shrink-0" />
           <p className="text-xs text-emerald-800 font-medium leading-snug">{runState.summary}</p>
+        </div>
+      )}
+
+      {/* Run History — last 3 runs */}
+      {runState.runHistory.length > 0 && (
+        <div className="border-t border-slate-100 px-4 py-2.5">
+          <div className="flex items-center gap-1.5 mb-2">
+            <Clock className="w-3 h-3 text-slate-400" />
+            <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest">Run History</span>
+          </div>
+          <div className="space-y-1.5">
+            {runState.runHistory.map((entry, i) => (
+              <div key={i} className="flex items-start gap-2">
+                <div className="flex flex-col items-center shrink-0">
+                  <div className={`w-1.5 h-1.5 rounded-full mt-1 ${i === 0 ? "bg-emerald-500" : "bg-slate-300"}`} />
+                  {i < runState.runHistory.length - 1 && (
+                    <div className="w-px h-3 bg-slate-200 mt-0.5" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[9px] text-slate-500 font-mono shrink-0">
+                      {entry.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                    {entry.tasksCreated > 0 && (
+                      <span className="text-[8px] font-bold px-1 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100">
+                        +{entry.tasksCreated}
+                      </span>
+                    )}
+                    {entry.issuesFound > 0 && (
+                      <span className="text-[8px] font-bold px-1 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-100">
+                        {entry.issuesFound} found
+                      </span>
+                    )}
+                  </div>
+                  <p className={`text-[10px] leading-snug truncate ${i === 0 ? "text-slate-700 font-medium" : "text-slate-400"}`}>
+                    {entry.summary}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -1525,16 +1576,21 @@ export default function AgentHub() {
       { name: "issuesFound", type: "number", description: "Number of issues, gaps, or at-risk items found" },
     ],
     handler: ({ agentId, summary, tasksCreated, issuesFound }) => {
-      setAgentStates(prev => ({
-        ...prev,
-        [agentId]: {
-          ...prev[agentId],
-          summary,
-          tasksCreated,
-          issuesFound,
-          liveStatus: null,
-        },
-      }));
+      const entry: RunHistoryEntry = { timestamp: new Date(), summary, tasksCreated, issuesFound };
+      setAgentStates(prev => {
+        const prior = prev[agentId]?.runHistory ?? [];
+        return {
+          ...prev,
+          [agentId]: {
+            ...prev[agentId],
+            summary,
+            tasksCreated,
+            issuesFound,
+            liveStatus: null,
+            runHistory: [entry, ...prior].slice(0, 3),
+          },
+        };
+      });
       // Also log to decision log when agent finds issues
       if (issuesFound > 0 || tasksCreated > 0) {
         const agent = AGENTS.find(a => a.id === agentId);
