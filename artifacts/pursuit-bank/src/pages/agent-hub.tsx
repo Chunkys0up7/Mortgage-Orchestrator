@@ -245,6 +245,22 @@ function StatusDot({ status }: { status: AgentRunState["status"] }) {
   return <div className="w-2 h-2 rounded-full bg-red-400" />;
 }
 
+// ─── Agent Preview Types ──────────────────────────────────────────────────────
+
+type AgentPreviewItem = {
+  label: string;
+  detail: string;
+  tag?: string;
+  urgent?: boolean;
+};
+
+type AgentPreview = {
+  countLabel: string;
+  hasAlert: boolean;
+  items: AgentPreviewItem[];
+  emptyMessage: string;
+};
+
 // ─── Agent Card ───────────────────────────────────────────────────────────────
 
 function AgentCard({
@@ -252,33 +268,48 @@ function AgentCard({
   runState,
   onRun,
   isAnyRunning,
+  isSelected,
+  onSelect,
+  preview,
 }: {
   agent: AgentDef;
   runState: AgentRunState;
   onRun: (agentId: string) => void;
   isAnyRunning: boolean;
+  isSelected: boolean;
+  onSelect: (agentId: string) => void;
+  preview: AgentPreview;
 }) {
   const isRunning = runState.status === "running";
   const isComplete = runState.status === "complete";
   const canRun = !isAnyRunning;
+  const showPreview = isSelected && !isRunning;
+
+  const borderClass = isRunning
+    ? "border-blue-300 shadow-md shadow-blue-100/60 ring-1 ring-blue-200"
+    : isSelected
+    ? "border-blue-400 shadow-md shadow-blue-100/50 ring-2 ring-blue-200"
+    : "border-slate-200 shadow-sm hover:border-slate-300 hover:shadow";
 
   return (
-    <div className={`
-      rounded-xl border transition-all duration-300 flex flex-col bg-white
-      ${isRunning
-        ? `border-blue-200 shadow-md shadow-blue-100/60 ring-1 ring-blue-200`
-        : `border-slate-200 shadow-sm hover:border-slate-300 hover:shadow`
-      }
-    `}>
+    <div
+      className={`rounded-xl border transition-all duration-200 flex flex-col bg-white cursor-pointer ${borderClass}`}
+      onClick={() => !isRunning && onSelect(agent.id)}
+    >
       {/* Header */}
-      <div className="flex items-start gap-3 p-4 pb-3">
-        <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${agent.accentColor}`}>
+      <div className={`flex items-start gap-3 p-4 pb-3 rounded-t-xl transition-colors duration-200 ${isSelected && !isRunning ? "bg-blue-50/40" : ""}`}>
+        <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-all duration-200 ${isSelected && !isRunning ? "ring-2 ring-blue-200" : ""} ${agent.accentColor}`}>
           <agent.icon className={`w-4.5 h-4.5 ${agent.accentText}`} />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <h3 className="text-sm font-semibold text-slate-800">{agent.name}</h3>
             <StatusDot status={runState.status} />
+            {isSelected && !isRunning && preview.hasAlert && (
+              <span className="ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 uppercase tracking-wide">
+                {preview.countLabel}
+              </span>
+            )}
           </div>
           <p className="text-xs text-slate-500 mt-0.5 leading-snug line-clamp-2">
             {agent.description}
@@ -294,8 +325,40 @@ function AgentCard({
         <WorkflowGraph steps={agent.steps} runState={runState} />
       </div>
 
+      {/* Preview Panel — visible when selected */}
+      {showPreview && (
+        <div className="border-t border-blue-100 bg-blue-50/30 px-4 py-3">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[9px] font-semibold text-blue-500 uppercase tracking-widest">
+              {preview.hasAlert ? "Needs Attention" : "Queue Preview"}
+            </span>
+            <span className="text-[9px] text-slate-400">{preview.countLabel}</span>
+          </div>
+          {preview.items.length === 0 ? (
+            <p className="text-[11px] text-slate-400 italic">{preview.emptyMessage}</p>
+          ) : (
+            <div className="space-y-1.5">
+              {preview.items.map((item, i) => (
+                <div key={i} className="flex items-start gap-2 group">
+                  <div className={`mt-1 w-1.5 h-1.5 rounded-full shrink-0 ${item.urgent ? "bg-red-400" : "bg-amber-400"}`} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-semibold text-slate-700 truncate">{item.label}</span>
+                      {item.tag && (
+                        <span className="text-[9px] px-1 py-0.5 rounded bg-slate-100 text-slate-500 font-medium shrink-0">{item.tag}</span>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-slate-500 leading-snug truncate">{item.detail}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Footer */}
-      <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100 mt-auto">
+      <div className={`flex items-center justify-between px-4 py-3 border-t mt-auto transition-colors duration-200 ${isSelected && !isRunning ? "border-blue-100 bg-blue-50/20" : "border-slate-100"}`}>
         <div className="text-xs text-slate-400">
           {isRunning && (
             <span className="text-blue-600 flex items-center gap-1.5 font-medium">
@@ -309,11 +372,14 @@ function AgentCard({
               Done · {runState.lastRunAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
             </span>
           )}
-          {runState.status === "idle" && (
-            <span className="text-slate-400">Ready to run</span>
+          {runState.status === "idle" && !isSelected && (
+            <span className="text-slate-400">Click to select</span>
+          )}
+          {runState.status === "idle" && isSelected && (
+            <span className="text-blue-500 font-medium">Selected</span>
           )}
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2" onClick={e => e.stopPropagation()}>
           {isComplete && (
             <button
               onClick={() => onRun(agent.id)}
@@ -330,13 +396,15 @@ function AgentCard({
               className={`
                 text-xs px-3 py-1.5 rounded-md font-medium flex items-center gap-1.5 transition-all
                 ${canRun
-                  ? `bg-blue-600 hover:bg-blue-700 text-white shadow-sm`
-                  : `bg-slate-100 text-slate-400 cursor-not-allowed`
+                  ? isSelected
+                    ? "bg-blue-600 hover:bg-blue-700 text-white shadow-sm ring-2 ring-blue-300 ring-offset-1"
+                    : "bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+                  : "bg-slate-100 text-slate-400 cursor-not-allowed"
                 }
               `}
             >
               <Zap className="w-3 h-3" />
-              Run Agent
+              {isSelected ? "Run Agent ↗" : "Run Agent"}
             </button>
           )}
           {isRunning && (
@@ -558,6 +626,11 @@ export default function AgentHub() {
     () => Object.fromEntries(AGENTS.map((a) => [a.id, defaultState()]))
   );
   const [activeAgentId, setActiveAgentId] = useState<string | null>(null);
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+
+  const handleSelectAgent = (agentId: string) => {
+    setSelectedAgentId(prev => (prev === agentId ? null : agentId));
+  };
 
   const { appendMessage, isLoading } = useCopilotChat();
 
@@ -1102,6 +1175,89 @@ export default function AgentHub() {
     );
   }, [activeAgentId, appendMessage]);
 
+  // ── Per-agent preview data ─────────────────────────────────────────────
+  const agentPreviews = useMemo((): Record<string, AgentPreview> => {
+    const today = new Date().toISOString().split("T")[0];
+    const shortages = (escrowAccounts ?? []).filter((a: any) => a.status === "shortage");
+    const pendingHeloc = (helocAccounts ?? []).filter((a: any) => a.status === "pending");
+    const urgentTasks = (openTasks ?? []).filter((t: any) => t.priority === "urgent");
+    const overdueTasks = (openTasks ?? []).filter((t: any) => t.dueDate && t.dueDate < today);
+    const loans = loansData?.loans ?? [];
+    const closingLoans = loans.filter((l: any) => l.stage === "closing" || l.stage === "approved");
+    const processingLoans = loans.filter((l: any) => l.stage === "processing" || l.stage === "underwriting");
+
+    const dedup = (arr: any[], seen: Set<number>) =>
+      arr.filter((t: any) => !seen.has(t.id) && seen.add(t.id));
+
+    const overdueSet = new Set(overdueTasks.map((t: any) => t.id));
+    const urgentOnly = urgentTasks.filter((t: any) => !overdueSet.has(t.id));
+
+    return {
+      "escrow-analysis": {
+        countLabel: `${shortages.length} shortage account${shortages.length !== 1 ? "s" : ""}`,
+        hasAlert: shortages.length > 0,
+        items: shortages.slice(0, 3).map((a: any) => ({
+          label: a.borrowerName,
+          detail: `Bal. $${Number(a.balance ?? 0).toLocaleString()} · ${a.nextDisbursementType ?? "disbursement"} due ${a.nextDisbursementDate ?? "soon"}`,
+          tag: "shortage",
+          urgent: true,
+        })),
+        emptyMessage: "All escrow accounts fully funded",
+      },
+      "heloc-processing": {
+        countLabel: `${pendingHeloc.length} pending application${pendingHeloc.length !== 1 ? "s" : ""}`,
+        hasAlert: pendingHeloc.length > 0,
+        items: pendingHeloc.slice(0, 3).map((a: any) => ({
+          label: a.borrowerName,
+          detail: `$${Number(a.creditLimit ?? 0).toLocaleString()} limit · ${a.ltv ?? "—"}% LTV`,
+          tag: a.stage ?? "pending",
+          urgent: a.stage === "application",
+        })),
+        emptyMessage: "No pending HELOC applications",
+      },
+      "loan-intake": {
+        countLabel: "Interactive workflow",
+        hasAlert: false,
+        items: [
+          { label: "Search borrower database", detail: "Check if customer already exists in system", tag: "step 1" },
+          { label: "Calculate DTI", detail: "Front & back ratios vs. FHA / VA / Conv. guidelines", tag: "step 2" },
+          { label: "Match loan product", detail: "Conventional, FHA, VA, USDA, or Jumbo", tag: "step 3" },
+        ],
+        emptyMessage: "",
+      },
+      "task-triage": {
+        countLabel: `${overdueTasks.length} overdue · ${urgentTasks.length} urgent`,
+        hasAlert: overdueTasks.length > 0 || urgentTasks.length > 0,
+        items: dedup(
+          [...overdueTasks.slice(0, 2).map((t: any) => ({ label: t.borrowerName, detail: t.description?.slice(0, 60), tag: "overdue", urgent: true })),
+           ...urgentOnly.slice(0, 2).map((t: any) => ({ label: t.borrowerName, detail: t.description?.slice(0, 60), tag: "urgent", urgent: false }))],
+          new Set()
+        ),
+        emptyMessage: "No urgent or overdue tasks",
+      },
+      "pipeline-monitor": {
+        countLabel: `${closingLoans.length} closing · ${processingLoans.length} in pipeline`,
+        hasAlert: closingLoans.length > 0,
+        items: [
+          ...closingLoans.slice(0, 2).map((l: any) => ({ label: l.borrowerName, detail: `${l.loanNumber} · ${l.stage}${l.closingDate ? ` · closes ${l.closingDate}` : ""}`, tag: l.stage, urgent: true })),
+          ...processingLoans.slice(0, 2).map((l: any) => ({ label: l.borrowerName, detail: `${l.loanNumber} · ${l.stage} · ${(l.loanType ?? "").toUpperCase()}`, tag: l.stage, urgent: false })),
+        ],
+        emptyMessage: "Pipeline clear",
+      },
+      "document-review": {
+        countLabel: `${processingLoans.length} file${processingLoans.length !== 1 ? "s" : ""} to review`,
+        hasAlert: processingLoans.length > 0,
+        items: processingLoans.slice(0, 3).map((l: any) => ({
+          label: l.borrowerName,
+          detail: `${l.loanNumber} · ${(l.loanType ?? "").toUpperCase()}`,
+          tag: l.stage,
+          urgent: l.stage === "processing",
+        })),
+        emptyMessage: "No files pending review",
+      },
+    };
+  }, [escrowAccounts, helocAccounts, openTasks, loansData]);
+
   // ── Quick stats ────────────────────────────────────────────────────────
   const urgentCount = (openTasks ?? []).filter((t: any) => t.priority === "urgent").length;
   const shortageCount = (escrowAccounts ?? []).filter(a => a.status === "shortage").length;
@@ -1197,6 +1353,9 @@ export default function AgentHub() {
                   runState={agentStates[agent.id]}
                   onRun={runAgent}
                   isAnyRunning={!!activeAgentId}
+                  isSelected={selectedAgentId === agent.id}
+                  onSelect={handleSelectAgent}
+                  preview={agentPreviews[agent.id] ?? { countLabel: "", hasAlert: false, items: [], emptyMessage: "" }}
                 />
               ))}
             </div>
