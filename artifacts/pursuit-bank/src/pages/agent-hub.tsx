@@ -13,7 +13,7 @@ import {
   BookOpen, ClipboardCheck, RefreshCw, User, Briefcase, Layers,
   Clock, ArrowUpDown, UserCheck, Bell, Search, CalendarClock,
   Calendar, FileBarChart, FolderOpen, Send, CheckCircle2, Zap,
-  Download, ChevronRight, RotateCcw, Info, TrendingUp, AlertCircle,
+  Download, ChevronRight, RotateCcw, TrendingUp, AlertCircle,
   Scale, FileSearch, ListChecks, SlidersHorizontal, Sparkles, PlayCircle,
   ChevronDown, ChevronUp, X, ScrollText, Sun,
 } from "lucide-react";
@@ -556,10 +556,7 @@ function AgentCard({
       </div>
 
       {/* Workflow Graph */}
-      <div className={`px-4 py-3 border-t transition-colors duration-300 ${isRunning ? "border-slate-100 bg-slate-50" : "border-slate-100 bg-slate-50/50"}`}>
-        <div className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest mb-2.5">
-          Workflow
-        </div>
+      <div className={`px-4 pt-3 pb-2 border-t transition-colors duration-300 ${isRunning ? "border-slate-100 bg-slate-50" : "border-slate-100 bg-slate-50/50"}`}>
         <WorkflowGraph steps={agent.steps} runState={runState} />
       </div>
 
@@ -615,12 +612,15 @@ function AgentCard({
 
       {/* Preview Panel — visible when selected + idle */}
       {showPreview && (
-        <div className="border-t border-blue-100 bg-blue-50/30 px-4 py-3">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[9px] font-semibold text-blue-500 uppercase tracking-widest">
-              {preview.hasAlert ? "Needs Attention" : "Queue Preview"}
+        <div className="border-t border-slate-100 bg-slate-50/60 px-4 py-3">
+          <div className="flex items-center gap-2 mb-2">
+            {preview.hasAlert
+              ? <div className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
+              : <div className="w-1.5 h-1.5 rounded-full bg-slate-300 shrink-0" />
+            }
+            <span className={`text-[10px] font-semibold ${preview.hasAlert ? "text-red-500" : "text-slate-400"}`}>
+              {preview.countLabel}
             </span>
-            <span className="text-[9px] text-slate-400">{preview.countLabel}</span>
           </div>
           {preview.items.length === 0 ? (
             <p className="text-[11px] text-slate-400 italic">{preview.emptyMessage}</p>
@@ -628,12 +628,12 @@ function AgentCard({
             <div className="space-y-1.5">
               {preview.items.map((item, i) => (
                 <div key={i} className="flex items-start gap-2">
-                  <div className={`mt-1 w-1.5 h-1.5 rounded-full shrink-0 ${item.urgent ? "bg-red-400" : "bg-amber-400"}`} />
+                  <div className={`mt-1 w-1.5 h-1.5 rounded-full shrink-0 ${item.urgent ? "bg-red-400" : "bg-amber-300"}`} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
                       <span className="text-xs font-semibold text-slate-700 truncate">{item.label}</span>
                       {item.tag && (
-                        <span className="text-[9px] px-1 py-0.5 rounded bg-slate-100 text-slate-500 font-medium shrink-0">{item.tag}</span>
+                        <span className="text-[9px] px-1 py-0.5 rounded bg-white border border-slate-200 text-slate-400 font-medium shrink-0">{item.tag}</span>
                       )}
                     </div>
                     <p className="text-[10px] text-slate-500 leading-snug truncate">{item.detail}</p>
@@ -661,10 +661,16 @@ function AgentCard({
             </span>
           )}
           {runState.status === "idle" && !isSelected && (
-            <span className="text-slate-400">Click to select</span>
+            <span className="flex items-center gap-1.5 text-[10px] text-slate-300">
+              <div className="w-1.5 h-1.5 rounded-full bg-slate-200" />
+              Idle
+            </span>
           )}
           {runState.status === "idle" && isSelected && (
-            <span className="text-blue-500 font-medium">Selected — ready to run</span>
+            <span className="flex items-center gap-1.5 text-[10px] text-blue-500 font-medium">
+              <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+              Ready to deploy
+            </span>
           )}
         </div>
         <div className="flex gap-2" onClick={e => e.stopPropagation()}>
@@ -881,31 +887,6 @@ function ActivityFeed({
 
 // ─── Stat Pill ────────────────────────────────────────────────────────────────
 
-function StatPill({
-  label,
-  value,
-  sub,
-  alert,
-}: {
-  label: string;
-  value: string | number;
-  sub?: string;
-  alert?: boolean;
-}) {
-  return (
-    <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-white border border-slate-200 shadow-sm">
-      <div>
-        <div className="text-[10px] uppercase tracking-widest text-slate-400 font-semibold">{label}</div>
-        <div className={`text-lg font-bold tabular-nums leading-tight ${alert ? "text-amber-500" : "text-slate-800"}`}>
-          {value}
-        </div>
-        {sub && (
-          <div className={`text-[10px] ${alert ? "text-amber-500" : "text-slate-400"}`}>{sub}</div>
-        )}
-      </div>
-    </div>
-  );
-}
 
 // ─── Pipeline Stage Bar ───────────────────────────────────────────────────────
 
@@ -1934,63 +1915,72 @@ Rules: max 7 lines per section. Specific names and dollar amounts only — no va
         {/* ── Middle: Agent Workspace ──────────────────────────────────── */}
         <div className="flex-1 flex flex-col overflow-hidden border-r border-slate-200">
 
-          {/* Stats bar */}
-          <div className="flex items-center gap-3 px-5 py-3 bg-white border-b border-slate-200 overflow-x-auto shrink-0">
-            <StatPill
-              label="Pipeline"
-              value={summary?.totalLoans ?? "—"}
-              sub={totalVolume ? formatCurrency(totalVolume) : undefined}
-            />
-            <StatPill
-              label="Open Tasks"
-              value={openTasks?.length ?? "—"}
-              sub={urgentCount > 0 ? `${urgentCount} urgent` : "all clear"}
-              alert={urgentCount > 0}
-            />
-            <StatPill
-              label="Escrow Shortages"
-              value={shortageCount}
-              sub={shortageCount > 0 ? "need analysis" : "all clear"}
-              alert={shortageCount > 0}
-            />
-            <StatPill
-              label="HELOC Pending"
-              value={helocPendingCount}
-              sub="awaiting review"
-            />
-            <div className="ml-auto shrink-0 flex items-center gap-2">
-              {/* Daily Briefing button */}
-              <div className="flex flex-col items-end gap-0.5">
-                <button
-                  onClick={runBriefing}
-                  disabled={isLoading || !!activeAgentId}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium transition-all duration-200 ${
-                    isLoading || !!activeAgentId
-                      ? "bg-slate-50 border-slate-200 text-slate-300 cursor-not-allowed"
-                      : "bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100 hover:border-amber-300 hover:shadow-sm shadow-amber-50"
-                  }`}
-                >
-                  {isLoading && lastBriefingAt && Date.now() - lastBriefingAt.getTime() < 60000 ? (
-                    <div className="w-3.5 h-3.5 rounded-full border-2 border-amber-400 border-t-transparent animate-spin" />
-                  ) : (
-                    <Sun className="w-3.5 h-3.5" />
-                  )}
-                  Daily Briefing
-                </button>
-                {lastBriefingAt && (
-                  <span className="text-[9px] text-slate-400 pr-0.5">
-                    Last: {lastBriefingAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                  </span>
+          {/* Status strip */}
+          <div className="flex items-center gap-0 px-5 h-11 bg-white border-b border-slate-200 shrink-0 overflow-x-auto">
+            {/* Live indicator */}
+            <div className="flex items-center gap-2 shrink-0 pr-4">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+              </span>
+              <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Live</span>
+            </div>
+
+            <div className="h-4 w-px bg-slate-100 shrink-0 mr-4" />
+
+            {/* Pipeline */}
+            <span className="text-xs text-slate-600 shrink-0">
+              <span className="font-semibold text-slate-800">{summary?.totalLoans ?? "—"}</span> loans
+              {totalVolume > 0 && <span className="text-slate-400"> · {formatCurrency(totalVolume)}</span>}
+            </span>
+
+            {(openTasks?.length ?? 0) > 0 && (
+              <>
+                <div className="h-4 w-px bg-slate-100 shrink-0 mx-4" />
+                <span className="text-xs text-slate-600 shrink-0">
+                  <span className={`font-semibold ${urgentCount > 0 ? "text-amber-600" : "text-slate-800"}`}>{openTasks!.length}</span> tasks
+                  {urgentCount > 0 && <span className="text-amber-600 font-medium"> · {urgentCount} urgent</span>}
+                </span>
+              </>
+            )}
+
+            {shortageCount > 0 && (
+              <>
+                <div className="h-4 w-px bg-slate-100 shrink-0 mx-4" />
+                <span className="text-xs font-medium text-red-500 shrink-0">{shortageCount} escrow shortage{shortageCount !== 1 ? "s" : ""}</span>
+              </>
+            )}
+
+            {helocPendingCount > 0 && (
+              <>
+                <div className="h-4 w-px bg-slate-100 shrink-0 mx-4" />
+                <span className="text-xs text-slate-600 shrink-0">
+                  <span className="font-semibold text-slate-800">{helocPendingCount}</span> HELOC pending
+                </span>
+              </>
+            )}
+
+            {/* Daily Briefing */}
+            <div className="ml-auto shrink-0 flex items-center gap-1.5 pl-4">
+              <button
+                onClick={runBriefing}
+                disabled={isLoading || !!activeAgentId}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-[11px] font-medium transition-all duration-200 ${
+                  isLoading || !!activeAgentId
+                    ? "bg-slate-50 border-slate-200 text-slate-300 cursor-not-allowed"
+                    : "bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100 hover:border-amber-300"
+                }`}
+              >
+                {isLoading && lastBriefingAt && Date.now() - lastBriefingAt.getTime() < 60000 ? (
+                  <div className="w-3 h-3 rounded-full border-2 border-amber-400 border-t-transparent animate-spin" />
+                ) : (
+                  <Sun className="w-3 h-3" />
                 )}
-              </div>
-
-              <div className="h-7 w-px bg-slate-200" />
-
-              {/* Hint */}
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-500">
-                <Info className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                <span>Click <strong className="text-slate-700">Run Agent</strong> or ask AI →</span>
-              </div>
+                Briefing
+                {lastBriefingAt && (
+                  <span className="text-amber-500/70 font-normal">{lastBriefingAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                )}
+              </button>
             </div>
           </div>
 
@@ -2253,7 +2243,7 @@ Then format as the structured report with the five sections exactly as requested
 Top 3 Actions must name specific borrowers and specific actions — never general advice like "review the pipeline."`}
               labels={{
                 title: "Pursuit AI",
-                initial: "Ready. What are we working on?\n\n**New application?** Tell me the client's name and what they need.\n**Existing customer?** Give me their name — I'll pull the full profile.\n**Escrow / tasks / pipeline?** Ask directly or run an agent workflow above.",
+                initial: "I'm watching the pipeline. What do you need?",
               }}
             />
           </div>
