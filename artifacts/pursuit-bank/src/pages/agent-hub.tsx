@@ -765,11 +765,26 @@ export default function AgentHub() {
       { name: "name", type: "string", description: "Name or partial name to search for" },
     ],
     handler: async ({ name }) => {
-      const resp = await fetch(`/api/borrowers?search=${encodeURIComponent(name)}`);
-      const borrowers = await resp.json();
-      if (!Array.isArray(borrowers) || borrowers.length === 0) {
-        return `No borrower found matching "${name}". They are not in the system. Known clients: ${["Elena Castillo", "Robert Chen", "Amanda Foster", "David Kim", "Patricia Monroe", "Sarah Nguyen", "Michael Thornton", "James Wallace", "James Paterson", "Lisa Chen", "Marcus Williams", "Jennifer Santos", "David Park", "Rachel Kim", "Thomas Okoye", "Sandra Buchanan", "Carlos Rivera", "Megan Hartley"].join(", ")}. Ask the user if the name might be spelled differently, or if this is a brand new customer not yet in the system.`;
+      const search = async (q: string) => {
+        const r = await fetch(`/api/borrowers?search=${encodeURIComponent(q)}`);
+        const data = await r.json();
+        return Array.isArray(data) ? data : [];
+      };
+
+      let borrowers = await search(name);
+
+      // Fallback: if full-name search returns nothing, try each word separately and merge unique results
+      if (borrowers.length === 0) {
+        const words = name.trim().split(/\s+/).filter(w => w.length > 1);
+        const parts = await Promise.all(words.map(w => search(w)));
+        const seen = new Set<number>();
+        borrowers = parts.flat().filter((b: any) => !seen.has(b.id) && seen.add(b.id));
       }
+
+      if (borrowers.length === 0) {
+        return `No borrower found matching "${name}". Known clients: ${["Elena Castillo", "Robert Chen", "Amanda Foster", "David Kim", "Patricia Monroe", "Sarah Nguyen", "Michael Thornton", "James Wallace", "James Paterson", "Lisa Chen", "Marcus Williams", "Jennifer Santos", "David Park", "Rachel Kim", "Thomas Okoye", "Sandra Buchanan", "Carlos Rivera", "Megan Hartley"].join(", ")}.`;
+      }
+
       return JSON.stringify(borrowers.map((b: any) => ({
         id: b.id,
         fullName: `${b.firstName} ${b.lastName}`,
@@ -778,7 +793,7 @@ export default function AgentHub() {
         creditScore: b.creditScore,
         employmentStatus: b.employmentStatus,
         annualIncome: b.annualIncome,
-        address: b.address,
+        address: b.currentAddress,
       })));
     },
   });

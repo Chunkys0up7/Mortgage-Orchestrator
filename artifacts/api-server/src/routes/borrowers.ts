@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, ilike, or } from "drizzle-orm";
+import { eq, ilike, or, sql } from "drizzle-orm";
 import { db, borrowersTable } from "@workspace/db";
 import {
   ListBorrowersQueryParams,
@@ -23,7 +23,11 @@ router.get("/borrowers", async (req, res): Promise<void> => {
         ? or(
             ilike(borrowersTable.firstName, `%${search}%`),
             ilike(borrowersTable.lastName, `%${search}%`),
-            ilike(borrowersTable.email, `%${search}%`)
+            ilike(borrowersTable.email, `%${search}%`),
+            ilike(
+              sql`(${borrowersTable.firstName} || ' ' || ${borrowersTable.lastName})`,
+              `%${search}%`
+            )
           )
         : undefined
     )
