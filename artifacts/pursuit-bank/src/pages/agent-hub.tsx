@@ -15,8 +15,131 @@ import {
   Calendar, FileBarChart, FolderOpen, Send, CheckCircle2, Zap,
   Download, ChevronRight, RotateCcw, Info, TrendingUp, AlertCircle,
   Scale, FileSearch, ListChecks, SlidersHorizontal, Sparkles, PlayCircle,
+  ChevronDown, ChevronUp, X, ScrollText,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/format";
+
+// ─── Decision Log Types ───────────────────────────────────────────────────────
+
+type DecisionType =
+  | "stage_advance"
+  | "task_approval"
+  | "product_selection"
+  | "heloc_approval"
+  | "decline"
+  | "escrow_adjustment"
+  | "other";
+
+interface DecisionRecord {
+  id: string;
+  timestamp: Date;
+  borrowerName: string;
+  loanNumber?: string;
+  decisionType: DecisionType;
+  description: string;
+  choice: string;
+}
+
+const DECISION_META: Record<DecisionType, { label: string; color: string; bg: string; icon: React.ComponentType<{ className?: string }> }> = {
+  stage_advance:     { label: "Stage Advance",     color: "text-emerald-700", bg: "bg-emerald-50 border-emerald-200",  icon: ChevronRight },
+  task_approval:     { label: "Task Approval",     color: "text-blue-700",    bg: "bg-blue-50 border-blue-200",        icon: CheckCircle2 },
+  product_selection: { label: "Product Selected",  color: "text-violet-700",  bg: "bg-violet-50 border-violet-200",    icon: Layers },
+  heloc_approval:    { label: "HELOC Approved",    color: "text-purple-700",  bg: "bg-purple-50 border-purple-200",    icon: CreditCard },
+  decline:           { label: "Declined",          color: "text-red-700",     bg: "bg-red-50 border-red-200",          icon: X },
+  escrow_adjustment: { label: "Escrow Adj.",       color: "text-amber-700",   bg: "bg-amber-50 border-amber-200",      icon: Building2 },
+  other:             { label: "Decision",          color: "text-slate-600",   bg: "bg-slate-50 border-slate-200",      icon: CheckCircle2 },
+};
+
+// ─── Decision Log Panel ───────────────────────────────────────────────────────
+
+function DecisionLogPanel({
+  log,
+  onClear,
+}: {
+  log: DecisionRecord[];
+  onClear: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className={`shrink-0 border-t border-slate-200 bg-white transition-all duration-300 ${open ? "h-64" : "h-10"}`}>
+      {/* Collapsed / expanded header strip */}
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center gap-2 px-5 h-10 hover:bg-slate-50 transition-colors"
+      >
+        <ScrollText className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+        <span className="text-xs font-semibold text-slate-600">Decision Log</span>
+        {log.length > 0 && (
+          <span className="flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-violet-100 text-violet-700 text-[9px] font-bold">
+            {log.length}
+          </span>
+        )}
+        <span className="ml-auto text-[10px] text-slate-400">
+          {log.length === 0 ? "No decisions logged yet" : `${log.length} decision${log.length !== 1 ? "s" : ""} this session`}
+        </span>
+        {open ? <ChevronDown className="w-3.5 h-3.5 text-slate-400" /> : <ChevronUp className="w-3.5 h-3.5 text-slate-400" />}
+      </button>
+
+      {/* Log content */}
+      {open && (
+        <div className="flex flex-col h-[calc(100%-2.5rem)] overflow-hidden">
+          <div className="flex items-center justify-between px-5 pt-2 pb-1">
+            <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest">Audit Trail — Current Session</span>
+            {log.length > 0 && (
+              <button
+                onClick={e => { e.stopPropagation(); onClear(); }}
+                className="text-[10px] text-slate-400 hover:text-red-500 flex items-center gap-1 transition-colors"
+              >
+                <X className="w-3 h-3" />
+                Clear
+              </button>
+            )}
+          </div>
+          <div className="flex-1 overflow-y-auto px-5 pb-3 space-y-2">
+            {log.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full gap-2 py-6">
+                <ScrollText className="w-8 h-8 text-slate-200" />
+                <p className="text-xs text-slate-400 text-center">
+                  No decisions logged yet.<br />
+                  Enable <span className="font-semibold text-violet-600">Guided Mode</span> and work a loan file to see the audit trail.
+                </p>
+              </div>
+            ) : (
+              log.map(record => {
+                const meta = DECISION_META[record.decisionType];
+                const Icon = meta.icon;
+                return (
+                  <div key={record.id} className={`flex items-start gap-2.5 p-2.5 rounded-lg border text-xs ${meta.bg}`}>
+                    <div className={`w-5 h-5 rounded-full bg-white border flex items-center justify-center shrink-0 mt-0.5 ${meta.bg}`}>
+                      <Icon className={`w-3 h-3 ${meta.color}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`font-semibold text-[10px] uppercase tracking-wide ${meta.color}`}>{meta.label}</span>
+                        {record.borrowerName && (
+                          <span className="text-slate-600 font-medium truncate">{record.borrowerName}</span>
+                        )}
+                        {record.loanNumber && (
+                          <span className="text-slate-400 font-mono text-[9px]">{record.loanNumber}</span>
+                        )}
+                        <span className="ml-auto text-slate-400 text-[9px] shrink-0">
+                          {record.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                      </div>
+                      <p className="text-slate-600 mt-0.5 leading-snug">{record.description}</p>
+                      <p className={`mt-0.5 font-medium ${meta.color}`}>→ {record.choice}</p>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ─── Agent Definitions ───────────────────────────────────────────────────────
 
@@ -628,6 +751,7 @@ export default function AgentHub() {
   const [activeAgentId, setActiveAgentId] = useState<string | null>(null);
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [guidedMode, setGuidedMode] = useState(false);
+  const [decisionLog, setDecisionLog] = useState<DecisionRecord[]>([]);
 
   const handleSelectAgent = (agentId: string) => {
     setSelectedAgentId(prev => (prev === agentId ? null : agentId));
@@ -1155,6 +1279,31 @@ export default function AgentHub() {
   });
 
   useCopilotAction({
+    name: "log_decision",
+    description: "Log a user-confirmed decision to the audit trail. Call this immediately after the user approves any guided-mode choice — stage advancement, task batch approval, product selection, HELOC approval, decline confirmation, or escrow adjustment. Do NOT call this speculatively; only call it when the user has explicitly confirmed.",
+    parameters: [
+      { name: "borrowerName", type: "string", description: "Full name of the borrower this decision relates to" },
+      { name: "loanNumber", type: "string", description: "Loan or application number if applicable, otherwise empty string" },
+      { name: "decisionType", type: "string", description: "One of: stage_advance | task_approval | product_selection | heloc_approval | decline | escrow_adjustment | other" },
+      { name: "description", type: "string", description: "One sentence describing what was decided (e.g. 'Approved 5 processing tasks for PB-2025-1042401')" },
+      { name: "choice", type: "string", description: "What the user chose (e.g. 'Option 1 — Advance to Underwriting' or 'Conventional 30-yr fixed @ 7.125%')" },
+    ],
+    handler: async ({ borrowerName, loanNumber, decisionType, description, choice }) => {
+      const record: DecisionRecord = {
+        id: crypto.randomUUID(),
+        timestamp: new Date(),
+        borrowerName,
+        loanNumber: loanNumber || undefined,
+        decisionType: decisionType as DecisionType,
+        description,
+        choice,
+      };
+      setDecisionLog(prev => [record, ...prev]);
+      return `✓ Decision logged: [${decisionType}] ${description} → ${choice}`;
+    },
+  });
+
+  useCopilotAction({
     name: "calculate_dti",
     description: "Calculate front-end and back-end Debt-to-Income ratios and check eligibility against conventional, FHA, VA, and USDA guidelines. Use this during loan intake.",
     parameters: [
@@ -1492,6 +1641,12 @@ export default function AgentHub() {
               ))}
             </div>
           </div>
+
+          {/* Decision Log */}
+          <DecisionLogPanel
+            log={decisionLog}
+            onClear={() => setDecisionLog([])}
+          />
         </div>
 
         {/* ── Right: Always-visible CopilotKit Chat ───────────────────── */}
@@ -1597,6 +1752,15 @@ Ready to advance [borrower name] → [nextStage]? (yes / review first)
 **GUIDED MODE — after each individual task creation:**
 Report it as: "✓ [task type]: [brief description]"
 After all tasks in a batch: pause and show the stage summary before advancing.
+
+**GUIDED MODE — AFTER EVERY USER CONFIRMATION:**
+Immediately call log_decision with:
+- borrowerName: the borrower's full name
+- loanNumber: the loan/application number (or "" if not applicable)
+- decisionType: one of stage_advance | task_approval | product_selection | heloc_approval | decline | escrow_adjustment | other
+- description: one sentence describing what was decided
+- choice: exactly what the user chose or approved
+This creates the permanent audit trail. Never skip this step after a confirmation.
 
 ═══════════════════════════════════════════════
 ## MODE B — AUTO MODE (when guidedMode = false)
