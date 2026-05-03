@@ -180,7 +180,19 @@ const AGENTS: AgentDef[] = [
       { id: "tasks", label: "Create Tasks", icon: ClipboardList },
       { id: "done", label: "Complete", icon: CheckCircle2 },
     ],
-    trigger: "Run the escrow analysis agent. Use get_all_escrow_accounts to retrieve every account. For each account, check the balance against required two-month reserves. Call get_escrow_shortages to get detailed shortage data. For every shortage account, calculate the required monthly payment increase and call create_loan_task (type: 'condition', priority: 'high') to create a processor follow-up task. End with a summary table: borrower name, loan number, balance, shortfall amount, monthly adjustment required, and whether a task was created.",
+    trigger: `Run the escrow analysis agent. CRITICAL: call report_agent_step as you reach each stage, then call report_agent_result when done.
+
+STEP SEQUENCE (call report_agent_step for each):
+1. stepId 'fetch' → immediately, before calling get_all_escrow_accounts
+2. stepId 'balances' → when you begin checking balances against reserve requirements
+3. stepId 'flag' → when you call get_escrow_shortages
+4. stepId 'calc' → when you compute monthly payment adjustments
+5. stepId 'tasks' → when you begin calling create_loan_task for each shortage
+6. stepId 'done' → after all tasks are created
+
+WORK: Use get_all_escrow_accounts to retrieve every account. Check balance vs required two-month reserves. Call get_escrow_shortages for detailed shortage data. For every shortage account, calculate required monthly payment increase. Call create_loan_task (type: 'condition', priority: 'high') for each shortage with a specific adjustment amount in the description.
+
+FINISH: Call report_agent_result with a one-line summary (e.g. "Found 3 shortages · $4,230 total exposure · 3 tasks created"), tasksCreated count, and issuesFound count. Then show the full table in chat.`,
   },
   {
     id: "heloc-processing",
@@ -198,7 +210,19 @@ const AGENTS: AgentDef[] = [
       { id: "conditions", label: "Draft Conditions", icon: ClipboardCheck },
       { id: "tasks", label: "Create Tasks", icon: ClipboardList },
     ],
-    trigger: "Run the HELOC processing agent. Call get_heloc_pending_details to get all pending applications. For each one: (1) verify credit score meets our 620 minimum, (2) confirm combined LTV is under 85%, (3) check it against HELOC product guidelines. Then for each eligible application generate a specific numbered list of approval conditions. For any that fail credit or LTV, create a decline task using create_loan_task with priority 'high'. End with a status table: borrower, credit score, LTV, result (approve/decline/conditional), and conditions list.",
+    trigger: `Run the HELOC processing agent. CRITICAL: call report_agent_step as you reach each stage, then call report_agent_result when done.
+
+STEP SEQUENCE (call report_agent_step for each):
+1. stepId 'pull' → immediately, before calling get_heloc_pending_details
+2. stepId 'credit' → when you begin credit score verification
+3. stepId 'ltv' → when you begin LTV calculations
+4. stepId 'guidelines' → when you check against HELOC product guidelines
+5. stepId 'conditions' → when you draft approval conditions
+6. stepId 'tasks' → when you call create_loan_task for declines or condition requests
+
+WORK: Call get_heloc_pending_details. For each application: (1) verify credit ≥ 620, (2) confirm combined LTV < 85%, (3) check guidelines. Generate numbered approval conditions for eligible files. Create decline tasks (priority: 'high') for any that fail.
+
+FINISH: Call report_agent_result with a one-line summary (e.g. "3 pending HELOCs · 2 eligible · 1 declined"), tasksCreated count, and issuesFound count. Then show the full status table in chat.`,
   },
   {
     id: "loan-intake",
@@ -216,7 +240,17 @@ const AGENTS: AgentDef[] = [
       { id: "checklist", label: "Build Checklist", icon: ListChecks },
       { id: "tasks", label: "Create Tasks", icon: ClipboardList },
     ],
-    trigger: "Run the loan intake agent. Ask me for the borrower's name first — then immediately call search_customer to check if they're in the system. If found, call get_customer_full_profile to pull their history. Then ask: annual income, existing monthly debts, proposed loan amount. Call calculate_dti with those numbers to compute front and back DTI. Based on DTI, credit score, and loan purpose, recommend the best matching product from our portfolio. Generate a document checklist for the loan type. Create intake tasks using create_loan_task for any immediate action items. Guide me one step at a time.",
+    trigger: `Run the loan intake agent. This agent is interactive — it needs borrower info from me. CRITICAL: call report_agent_step as you reach each stage.
+
+STEP SEQUENCE (call report_agent_step for each):
+1. stepId 'search' → immediately, then ask for borrower name and call search_customer
+2. stepId 'verify' → when you begin employment verification questions
+3. stepId 'dti' → when you call calculate_dti
+4. stepId 'match' → when you recommend a product
+5. stepId 'checklist' → when you build the document checklist
+6. stepId 'tasks' → when you call create_loan_task for intake action items
+
+Start by calling report_agent_step(agentId: 'loan-intake', stepId: 'search'), then ask: "Who is the borrower? Give me their name and I'll check if they're in the system." Proceed step by step collecting only what you need. Call report_agent_result at the end.`,
   },
   {
     id: "task-triage",
@@ -234,7 +268,19 @@ const AGENTS: AgentDef[] = [
       { id: "escalate", label: "Escalate Tasks", icon: AlertTriangle },
       { id: "plan", label: "Action Plan", icon: Bell },
     ],
-    trigger: "Run the task triage agent. Call get_overdue_tasks to find all overdue and urgent items. Then review the full open task queue. Group tasks into three tiers: (1) CRITICAL — overdue or due today, (2) HIGH — due within 3 days, (3) NORMAL — all others. For any overdue task that still has no activity, call create_loan_task to create an escalation task with priority 'urgent'. List every task by tier with borrower name, loan number, description, due date, and assigned processor. End with a concise action plan: what the team must complete today.",
+    trigger: `Run the task triage agent. CRITICAL: call report_agent_step as you reach each stage, then call report_agent_result when done.
+
+STEP SEQUENCE (call report_agent_step for each):
+1. stepId 'load' → immediately, before calling get_overdue_tasks
+2. stepId 'overdue' → when you begin reviewing overdue items
+3. stepId 'prioritise' → when you tier tasks into CRITICAL / HIGH / NORMAL
+4. stepId 'assign' → when you check for unassigned tasks
+5. stepId 'escalate' → when you call create_loan_task for escalation tasks
+6. stepId 'plan' → when you compile the final action plan
+
+WORK: Call get_overdue_tasks to find all overdue and urgent items. Review the open task queue. Tier into: (1) CRITICAL — overdue or due today, (2) HIGH — due within 3 days, (3) NORMAL — all others. For any overdue task with no recent activity, create an escalation task (priority: 'urgent').
+
+FINISH: Call report_agent_result with a one-line summary (e.g. "42 tasks reviewed · 8 critical · 3 escalations created"), tasksCreated count, and issuesFound count. Then list all tasks by tier in chat.`,
   },
   {
     id: "pipeline-monitor",
@@ -252,7 +298,19 @@ const AGENTS: AgentDef[] = [
       { id: "tasks", label: "Create Tasks", icon: ClipboardList },
       { id: "report", label: "Pipeline Report", icon: FileBarChart },
     ],
-    trigger: "Run the pipeline monitor agent. Call get_pipeline_at_risk first to get the high-level view. Then call get_loans_in_stage for 'processing', 'underwriting', and 'closing' stages. For each closing-stage loan, check if a Closing Disclosure task exists and if not, call create_loan_task (type: 'disclosure', priority: 'urgent'). Identify any loan in processing or underwriting with no open tasks — those are likely stalled. For each stalled loan, create a check-in task using create_loan_task. Produce a pipeline health report: stage breakdown, at-risk files, closing dates, and recommended next actions per loan.",
+    trigger: `Run the pipeline monitor agent. CRITICAL: call report_agent_step as you reach each stage, then call report_agent_result when done.
+
+STEP SEQUENCE (call report_agent_step for each):
+1. stepId 'scan' → immediately, before calling get_pipeline_at_risk
+2. stepId 'stages' → when you call get_loans_in_stage for processing/underwriting/closing
+3. stepId 'stalled' → when you identify loans with no open tasks
+4. stepId 'closings' → when you review closing-stage loans for CD tasks
+5. stepId 'tasks' → when you call create_loan_task for stalled loans or missing CDs
+6. stepId 'report' → when you compile the final pipeline health report
+
+WORK: Call get_pipeline_at_risk for the high-level view. Then get_loans_in_stage for processing, underwriting, and closing. For each closing loan, check for Closing Disclosure task and create one if missing (priority: 'urgent'). Flag any loan in processing/underwriting with zero open tasks as stalled — create a check-in task for each.
+
+FINISH: Call report_agent_result with a one-line summary (e.g. "23 loans scanned · 4 at-risk · 2 stalled · 5 tasks created"), tasksCreated count, and issuesFound count. Then show the full pipeline health report in chat.`,
   },
   {
     id: "document-review",
@@ -270,7 +328,19 @@ const AGENTS: AgentDef[] = [
       { id: "tasks", label: "Log Conditions", icon: ClipboardList },
       { id: "done", label: "Complete", icon: CheckCircle2 },
     ],
-    trigger: "Run the document review agent. Call get_loans_in_stage for 'processing' and then 'underwriting' to get all active files. For each loan, call get_loan_documents with its loan number to check completeness. Identify all loans with required documents in 'pending' or 'missing' status. For each gap found, call create_loan_task with type 'document_request', a specific description of what is needed and why, and priority 'high'. End with a complete gap report: loan number, borrower name, missing documents, and whether a request task was created.",
+    trigger: `Run the document review agent. CRITICAL: call report_agent_step as you reach each stage, then call report_agent_result when done.
+
+STEP SEQUENCE (call report_agent_step for each):
+1. stepId 'load' → immediately, before calling get_loans_in_stage
+2. stepId 'fetch' → when you begin calling get_loan_documents for each loan
+3. stepId 'gaps' → when you identify missing/pending documents
+4. stepId 'request' → when you draft specific document requests
+5. stepId 'tasks' → when you call create_loan_task for each document gap
+6. stepId 'done' → after all document request tasks are created
+
+WORK: Call get_loans_in_stage for 'processing' then 'underwriting'. For each loan, call get_loan_documents with its loan number. Identify all 'pending' or 'missing' documents. For each gap, create a specific document_request task (priority: 'high') with the exact document name and reason.
+
+FINISH: Call report_agent_result with a one-line summary (e.g. "12 files reviewed · 7 gaps found · 7 request tasks created"), tasksCreated count, and issuesFound count. Then show the full gap report in chat.`,
   },
 ];
 
@@ -282,6 +352,9 @@ interface AgentRunState {
   completedSteps: Set<number>;
   lastRunAt: Date | null;
   summary: string | null;
+  liveStatus: string | null;   // what the AI is doing right now
+  tasksCreated: number;
+  issuesFound: number;
 }
 
 const defaultState = (): AgentRunState => ({
@@ -290,6 +363,9 @@ const defaultState = (): AgentRunState => ({
   completedSteps: new Set(),
   lastRunAt: null,
   summary: null,
+  liveStatus: null,
+  tasksCreated: 0,
+  issuesFound: 0,
 });
 
 // ─── Workflow Graph Component ─────────────────────────────────────────────────
@@ -406,49 +482,87 @@ function AgentCard({
   const isRunning = runState.status === "running";
   const isComplete = runState.status === "complete";
   const canRun = !isAnyRunning;
-  const showPreview = isSelected && !isRunning;
+  const showPreview = isSelected && !isRunning && !isComplete;
 
   const borderClass = isRunning
-    ? "border-blue-300 shadow-md shadow-blue-100/60 ring-1 ring-blue-200"
+    ? `${agent.borderActive} shadow-lg ring-2 ring-offset-1`
     : isSelected
     ? "border-blue-400 shadow-md shadow-blue-100/50 ring-2 ring-blue-200"
     : "border-slate-200 shadow-sm hover:border-slate-300 hover:shadow";
 
+  // running card label colour matches agent accent
+  const activeStepLabel = isRunning && runState.activeStep >= 0
+    ? agent.steps[runState.activeStep]?.label
+    : null;
+
   return (
     <div
-      className={`rounded-xl border transition-all duration-200 flex flex-col bg-white cursor-pointer ${borderClass}`}
+      className={`rounded-xl border transition-all duration-300 flex flex-col bg-white cursor-pointer ${borderClass}`}
       onClick={() => !isRunning && onSelect(agent.id)}
     >
       {/* Header */}
-      <div className={`flex items-start gap-3 p-4 pb-3 rounded-t-xl transition-colors duration-200 ${isSelected && !isRunning ? "bg-blue-50/40" : ""}`}>
-        <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-all duration-200 ${isSelected && !isRunning ? "ring-2 ring-blue-200" : ""} ${agent.accentColor}`}>
-          <agent.icon className={`w-4.5 h-4.5 ${agent.accentText}`} />
+      <div className={`flex items-start gap-3 p-4 pb-3 rounded-t-xl transition-colors duration-200 ${isRunning ? `${agent.accentColor}/60` : isSelected ? "bg-blue-50/40" : ""}`}>
+        <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-all duration-300 ${isRunning ? "ring-2 ring-offset-1 shadow-sm " + agent.borderActive : isSelected ? "ring-2 ring-blue-200" : ""} ${agent.accentColor}`}>
+          {isRunning ? (
+            <div className={`w-3.5 h-3.5 rounded-full border-2 border-t-transparent animate-spin ${agent.accentText.replace("text-", "border-")}`} />
+          ) : (
+            <agent.icon className={`w-4 h-4 ${agent.accentText}`} />
+          )}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <h3 className="text-sm font-semibold text-slate-800">{agent.name}</h3>
             <StatusDot status={runState.status} />
-            {isSelected && !isRunning && preview.hasAlert && (
+            {isRunning && activeStepLabel && (
+              <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${agent.accentColor} ${agent.accentText} uppercase tracking-wide`}>
+                {activeStepLabel}
+              </span>
+            )}
+            {isComplete && (runState.tasksCreated > 0 || runState.issuesFound > 0) && (
+              <div className="ml-auto flex items-center gap-1.5">
+                {runState.tasksCreated > 0 && (
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
+                    +{runState.tasksCreated} tasks
+                  </span>
+                )}
+                {runState.issuesFound > 0 && (
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                    {runState.issuesFound} found
+                  </span>
+                )}
+              </div>
+            )}
+            {isSelected && !isRunning && !isComplete && preview.hasAlert && (
               <span className="ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 uppercase tracking-wide">
                 {preview.countLabel}
               </span>
             )}
           </div>
           <p className="text-xs text-slate-500 mt-0.5 leading-snug line-clamp-2">
-            {agent.description}
+            {isRunning && runState.liveStatus
+              ? <span className={`font-medium ${agent.accentText}`}>{runState.liveStatus}</span>
+              : agent.description}
           </p>
         </div>
       </div>
 
       {/* Workflow Graph */}
-      <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/50">
+      <div className={`px-4 py-3 border-t transition-colors duration-300 ${isRunning ? "border-slate-100 bg-slate-50" : "border-slate-100 bg-slate-50/50"}`}>
         <div className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest mb-2.5">
           Workflow
         </div>
         <WorkflowGraph steps={agent.steps} runState={runState} />
       </div>
 
-      {/* Preview Panel — visible when selected */}
+      {/* Result summary — shown after a completed run */}
+      {isComplete && runState.summary && (
+        <div className="border-t border-emerald-100 bg-emerald-50/50 px-4 py-2.5 flex items-start gap-2">
+          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 mt-0.5 shrink-0" />
+          <p className="text-xs text-emerald-800 font-medium leading-snug">{runState.summary}</p>
+        </div>
+      )}
+
+      {/* Preview Panel — visible when selected + idle */}
       {showPreview && (
         <div className="border-t border-blue-100 bg-blue-50/30 px-4 py-3">
           <div className="flex items-center justify-between mb-2">
@@ -462,7 +576,7 @@ function AgentCard({
           ) : (
             <div className="space-y-1.5">
               {preview.items.map((item, i) => (
-                <div key={i} className="flex items-start gap-2 group">
+                <div key={i} className="flex items-start gap-2">
                   <div className={`mt-1 w-1.5 h-1.5 rounded-full shrink-0 ${item.urgent ? "bg-red-400" : "bg-amber-400"}`} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
@@ -481,12 +595,12 @@ function AgentCard({
       )}
 
       {/* Footer */}
-      <div className={`flex items-center justify-between px-4 py-3 border-t mt-auto transition-colors duration-200 ${isSelected && !isRunning ? "border-blue-100 bg-blue-50/20" : "border-slate-100"}`}>
+      <div className={`flex items-center justify-between px-4 py-3 border-t mt-auto transition-colors duration-200 ${isRunning ? "border-slate-100 bg-slate-50/30" : isSelected ? "border-blue-100 bg-blue-50/20" : "border-slate-100"}`}>
         <div className="text-xs text-slate-400">
           {isRunning && (
-            <span className="text-blue-600 flex items-center gap-1.5 font-medium">
+            <span className={`flex items-center gap-1.5 font-medium ${agent.accentText}`}>
               <Zap className="w-3 h-3" />
-              Processing...
+              Agent running...
             </span>
           )}
           {isComplete && runState.lastRunAt && (
@@ -499,7 +613,7 @@ function AgentCard({
             <span className="text-slate-400">Click to select</span>
           )}
           {runState.status === "idle" && isSelected && (
-            <span className="text-blue-500 font-medium">Selected</span>
+            <span className="text-blue-500 font-medium">Selected — ready to run</span>
           )}
         </div>
         <div className="flex gap-2" onClick={e => e.stopPropagation()}>
@@ -531,8 +645,8 @@ function AgentCard({
             </button>
           )}
           {isRunning && (
-            <div className="text-xs px-3 py-1.5 rounded-md border border-blue-200 text-blue-600 flex items-center gap-1.5 bg-blue-50 font-medium">
-              <div className="w-3 h-3 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
+            <div className={`text-xs px-3 py-1.5 rounded-md border flex items-center gap-1.5 font-medium ${agent.accentColor} ${agent.accentText} ${agent.borderActive}`}>
+              <div className={`w-3 h-3 rounded-full border-2 border-t-transparent animate-spin ${agent.accentText.replace("text-", "border-")}`} />
               Running
             </div>
           )}
@@ -1373,32 +1487,89 @@ export default function AgentHub() {
     },
   });
 
-  // ── Agent step animation ─────────────────────────────────────────────────
+  // ── report_agent_step — AI calls this to advance workflow graph in real time ──
+  useCopilotAction({
+    name: "report_agent_step",
+    description: "Advance the workflow graph on the agent card to show real-time progress. Call this BEFORE starting each workflow step. The stepId must exactly match the agent's step id.",
+    parameters: [
+      { name: "agentId", type: "string", description: "The agent id: escrow-analysis | heloc-processing | loan-intake | task-triage | pipeline-monitor | document-review" },
+      { name: "stepId", type: "string", description: "The step id that is now starting (e.g. 'fetch', 'balances', 'flag')" },
+      { name: "liveStatus", type: "string", description: "One short phrase describing what is happening right now (e.g. 'Fetching 18 escrow accounts...')" },
+    ],
+    handler: ({ agentId, stepId, liveStatus }) => {
+      const agent = AGENTS.find(a => a.id === agentId);
+      if (!agent) return `Unknown agent: ${agentId}`;
+      const stepIndex = agent.steps.findIndex(s => s.id === stepId);
+      if (stepIndex === -1) return `Unknown step: ${stepId} for agent ${agentId}`;
+      setAgentStates(prev => ({
+        ...prev,
+        [agentId]: {
+          ...prev[agentId],
+          activeStep: stepIndex,
+          completedSteps: new Set(Array.from({ length: stepIndex }, (_, k) => k)),
+          liveStatus: liveStatus ?? null,
+        },
+      }));
+      return `Step "${stepId}" (${stepIndex + 1}/${agent.steps.length}) activated on ${agentId}`;
+    },
+  });
+
+  // ── report_agent_result — AI calls this when the agent finishes ───────────
+  useCopilotAction({
+    name: "report_agent_result",
+    description: "Record the final result of an agent run. Call this after all work is done, before showing the summary in chat. Sets the card summary, task count, and issue count.",
+    parameters: [
+      { name: "agentId", type: "string", description: "The agent id that just completed" },
+      { name: "summary", type: "string", description: "One-line result summary shown on the agent card (e.g. 'Found 3 shortages · $4,230 total · 3 tasks created')" },
+      { name: "tasksCreated", type: "number", description: "Number of tasks created during this run" },
+      { name: "issuesFound", type: "number", description: "Number of issues, gaps, or at-risk items found" },
+    ],
+    handler: ({ agentId, summary, tasksCreated, issuesFound }) => {
+      setAgentStates(prev => ({
+        ...prev,
+        [agentId]: {
+          ...prev[agentId],
+          summary,
+          tasksCreated,
+          issuesFound,
+          liveStatus: null,
+        },
+      }));
+      // Also log to decision log when agent finds issues
+      if (issuesFound > 0 || tasksCreated > 0) {
+        const agent = AGENTS.find(a => a.id === agentId);
+        setDecisionLog(prev => [{
+          id: crypto.randomUUID(),
+          timestamp: new Date(),
+          borrowerName: "Pipeline",
+          decisionType: "other",
+          description: `${agent?.name ?? agentId} completed: ${summary}`,
+          choice: `${tasksCreated} task${tasksCreated !== 1 ? "s" : ""} created · ${issuesFound} issue${issuesFound !== 1 ? "s" : ""} found`,
+        }, ...prev]);
+      }
+      return `Result recorded for ${agentId}: ${summary}`;
+    },
+  });
+
+  // ── Fallback step pulse when AI doesn't call report_agent_step ────────────
   useEffect(() => {
     if (!activeAgentId) return;
     const agent = AGENTS.find(a => a.id === activeAgentId);
     if (!agent) return;
 
-    const stepCount = agent.steps.length;
-    const timers: ReturnType<typeof setTimeout>[] = [];
+    // Only advance the fallback timer when AI hasn't advanced beyond step 0 after 5s
+    const fallbackTimer = setTimeout(() => {
+      setAgentStates(prev => {
+        const cur = prev[activeAgentId];
+        if (!cur || cur.activeStep > 0) return prev; // AI already advanced — don't interfere
+        return {
+          ...prev,
+          [activeAgentId]: { ...cur, activeStep: 0, completedSteps: new Set() },
+        };
+      });
+    }, 5000);
 
-    for (let i = 0; i < stepCount; i++) {
-      const delay = i * 2800;
-      timers.push(
-        setTimeout(() => {
-          setAgentStates(prev => ({
-            ...prev,
-            [activeAgentId]: {
-              ...prev[activeAgentId],
-              activeStep: i,
-              completedSteps: new Set(Array.from({ length: i }, (_, k) => k)),
-            },
-          }));
-        }, delay)
-      );
-    }
-
-    return () => timers.forEach(clearTimeout);
+    return () => clearTimeout(fallbackTimer);
   }, [activeAgentId]);
 
   // ── "/" shortcut → focus chat input ──────────────────────────────────
@@ -1627,18 +1798,22 @@ export default function AgentHub() {
           {/* Agent cards grid */}
           <div className="flex-1 overflow-y-auto p-5">
             <div className="grid grid-cols-2 gap-4 max-w-5xl mx-auto">
-              {AGENTS.map((agent) => (
-                <AgentCard
-                  key={agent.id}
-                  agent={agent}
-                  runState={agentStates[agent.id]}
-                  onRun={runAgent}
-                  isAnyRunning={!!activeAgentId}
-                  isSelected={selectedAgentId === agent.id}
-                  onSelect={handleSelectAgent}
-                  preview={agentPreviews[agent.id] ?? { countLabel: "", hasAlert: false, items: [], emptyMessage: "" }}
-                />
-              ))}
+              {AGENTS.map((agent) => {
+                const isRunning = agentStates[agent.id]?.status === "running";
+                return (
+                <div key={agent.id} className={isRunning ? "col-span-2" : ""}>
+                  <AgentCard
+                    agent={agent}
+                    runState={agentStates[agent.id]}
+                    onRun={runAgent}
+                    isAnyRunning={!!activeAgentId}
+                    isSelected={selectedAgentId === agent.id}
+                    onSelect={handleSelectAgent}
+                    preview={agentPreviews[agent.id] ?? { countLabel: "", hasAlert: false, items: [], emptyMessage: "" }}
+                  />
+                </div>
+                );
+              })}
             </div>
           </div>
 
@@ -1857,7 +2032,14 @@ PIPELINE & ESCROW:
 - get_escrow_shortages() — shortage accounts only
 - get_pipeline_at_risk() — stalled + closing-risk loans
 - get_heloc_pending_details() — pending HELOC applications
-- get_overdue_tasks() — overdue and urgent tasks`}
+- get_overdue_tasks() — overdue and urgent tasks
+
+AGENT WORKFLOW CONTROLS (use these during every agent run — they are MANDATORY):
+- report_agent_step(agentId, stepId, liveStatus) — CALL BEFORE each workflow step to advance the visual workflow graph in real time. liveStatus is a short phrase like "Fetching 18 escrow accounts..." shown live on the card.
+- report_agent_result(agentId, summary, tasksCreated, issuesFound) — CALL AFTER all work is done. Sets the result summary on the agent card and logs the run. summary is one line e.g. "3 shortages · $4,230 exposure · 3 tasks created".
+
+DECISION AUDIT:
+- log_decision(borrowerName, loanNumber, decisionType, description, choice) — call after every user-confirmed decision in Guided Mode`}
               labels={{
                 title: "Pursuit AI",
                 initial: "Ready. What are we working on?\n\n**New application?** Tell me the client's name and what they need.\n**Existing customer?** Give me their name — I'll pull the full profile.\n**Escrow / tasks / pipeline?** Ask directly or run an agent workflow above.",
