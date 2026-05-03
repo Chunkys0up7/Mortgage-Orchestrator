@@ -5,7 +5,7 @@ import { TextMessage, Role } from "@copilotkit/runtime-client-gql";
 import {
   useListEscrow, useListHeloc, useListTasks,
   useGetPipelineSummary, useListLoans, useCreateTask,
-  useCreateHeloc,
+  useCreateHeloc, useUpdateTask,
 } from "@workspace/api-client-react";
 import {
   Building2, CreditCard, FilePlus2, ClipboardList, Activity, Files,
@@ -643,6 +643,7 @@ export default function AgentHub() {
   const { data: summary } = useGetPipelineSummary({ query: { refetchInterval: POLL } });
   const { data: loansData } = useListLoans({}, { query: { refetchInterval: POLL } });
   const { mutateAsync: createTask } = useCreateTask();
+  const { mutateAsync: completeTask } = useUpdateTask();
   const { mutateAsync: createHeloc } = useCreateHeloc();
 
   // ── CopilotKit readable state ──────────────────────────────────────────
@@ -1034,6 +1035,24 @@ export default function AgentHub() {
         })),
         completedTasks: done.map((t: any) => ({ id: t.id, description: t.description.slice(0, 80), status: t.status })),
       });
+    },
+  });
+
+  useCopilotAction({
+    name: "mark_task_complete",
+    description: "Mark an open loan task as complete. Use this after confirming a task has been resolved — e.g. a document was received, a condition was cleared, or a disclosure was sent. Always call search_tasks_by_borrower first to get the task ID.",
+    parameters: [
+      { name: "taskId", type: "number", description: "The numeric task ID from search_tasks_by_borrower or get_overdue_tasks results" },
+      { name: "borrowerName", type: "string", description: "Full name of the borrower the task belongs to" },
+      { name: "taskDescription", type: "string", description: "Brief description of what was resolved (for confirmation message)" },
+    ],
+    handler: async ({ taskId, borrowerName, taskDescription }) => {
+      try {
+        const task = await completeTask({ id: taskId, data: { status: "complete" } });
+        return `Task #${task.id} marked complete for ${borrowerName}: "${taskDescription}". Status updated to complete.`;
+      } catch {
+        return `Failed to complete task #${taskId}. The task may not exist or may already be closed.`;
+      }
     },
   });
 
@@ -1441,7 +1460,8 @@ One step at a time. Bullets for summaries only. State what you found and what co
 - get_loans_in_stage(stage) — all loans in a given stage (application/processing/underwriting/approved/closing/funded)
 - get_loan_documents(loanNumber) — document checklist and completion status
 - create_loan_task(loanNumber, borrowerName, taskType, description, priority, dueDate) — create task
-- search_tasks_by_borrower(borrowerName) — all tasks for a borrower
+- search_tasks_by_borrower(borrowerName) — all tasks for a borrower (returns task IDs needed for mark_task_complete)
+- mark_task_complete(taskId, borrowerName, taskDescription) — close a resolved task. ALWAYS call search_tasks_by_borrower first to get the taskId. Use when a document was received, condition cleared, or disclosure sent.
 
 ## TOOLS — PIPELINE & ESCROW ANALYSIS
 - get_all_escrow_accounts() — all accounts with shortfall/surplus computed
