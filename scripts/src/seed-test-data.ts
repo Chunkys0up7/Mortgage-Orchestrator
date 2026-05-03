@@ -287,6 +287,190 @@ async function main() {
     });
   }
 
+  // ── 6. Rachel Kim — VA purchase, processing ───────────────────────────────
+  console.log("\n── Rachel Kim  (VA purchase, processing)");
+  const kim = await upsertBorrower({
+    firstName: "Rachel", lastName: "Kim",
+    email: "rachel.kim@usarmy.mil", phone: "(910) 733-4412",
+    creditScore: 718, annualIncome: 89000, employmentStatus: "employed", crmSource: "manual",
+    currentAddress: "4102 Fort Bragg Rd, Fayetteville, NC 28306",
+  });
+  const kimLoan = await upsertLoan({
+    loanNumber: "PB-2025-1050234",
+    borrowerId: kim["id"], borrowerName: "Rachel Kim",
+    propertyAddress: "7815 Pinehurst Way, Raleigh, NC 27612",
+    loanAmount: 320000, loanType: "va",
+    interestRate: 6.75, ltv: 100, dti: 34.8, creditScore: 718,
+    stage: "processing", status: "active",
+    loanOfficer: "Mark Santos", processor: "Lisa Reyes",
+    loanPurpose: "purchase", propertyType: "single_family", occupancyType: "primary",
+  });
+  if (kimLoan["id"]) {
+    await addTask({
+      loanId: kimLoan["id"], loanNumber: "PB-2025-1050234",
+      borrowerName: "Rachel Kim", taskType: "condition",
+      description: "Obtain Certificate of Eligibility (COE) from VA portal — required before underwriting submission",
+      dueDate: "2026-05-07", assignedTo: "Lisa Reyes", status: "open", priority: "urgent",
+    });
+    await addTask({
+      loanId: kimLoan["id"], loanNumber: "PB-2025-1050234",
+      borrowerName: "Rachel Kim", taskType: "appraisal",
+      description: "VA appraisal ordered — VA requires MPR (Minimum Property Requirements) inspection alongside appraisal",
+      dueDate: "2026-05-14", assignedTo: "Mark Santos", status: "open", priority: "high",
+    });
+  }
+
+  // ── 7. Thomas Okoye — USDA rural purchase, application ───────────────────
+  console.log("\n── Thomas Okoye  (USDA rural, application)");
+  const okoye = await upsertBorrower({
+    firstName: "Thomas", lastName: "Okoye",
+    email: "t.okoye@farmworks.net", phone: "(573) 822-1034",
+    creditScore: 641, annualIncome: 65000, employmentStatus: "employed", crmSource: "manual",
+    currentAddress: "210 County Rd 14, Columbia, MO 65201",
+  });
+  const okoyeLoan = await upsertLoan({
+    loanNumber: "PB-2025-1051089",
+    borrowerId: okoye["id"], borrowerName: "Thomas Okoye",
+    propertyAddress: "4400 Rural Route 7, Fulton, MO 65251",
+    loanAmount: 185000, loanType: "usda",
+    interestRate: 7.0, ltv: 100, dti: 39.2, creditScore: 641,
+    stage: "application", status: "active",
+    loanOfficer: "Mark Santos", processor: "Tom Nguyen",
+    loanPurpose: "purchase", propertyType: "single_family", occupancyType: "primary",
+  });
+  if (okoyeLoan["id"]) {
+    await addTask({
+      loanId: okoyeLoan["id"], loanNumber: "PB-2025-1051089",
+      borrowerName: "Thomas Okoye", taskType: "condition",
+      description: "USDA income eligibility check — household income $65k must fall within 115% of area median income for Callaway County",
+      dueDate: "2026-05-06", assignedTo: "Tom Nguyen", status: "open", priority: "urgent",
+    });
+    await addTask({
+      loanId: okoyeLoan["id"], loanNumber: "PB-2025-1051089",
+      borrowerName: "Thomas Okoye", taskType: "disclosure",
+      description: "Send USDA Rural Development initial disclosures and explain program requirements to borrower",
+      dueDate: "2026-05-09", assignedTo: "Tom Nguyen", status: "open", priority: "high",
+    });
+  }
+
+  // ── 8. Sandra Buchanan — rate-and-term refi, underwriting ────────────────
+  console.log("\n── Sandra Buchanan  (rate-term refi, underwriting)");
+  const buchanan = await upsertBorrower({
+    firstName: "Sandra", lastName: "Buchanan",
+    email: "sandra.buchanan@consulting.com", phone: "(617) 449-8821",
+    creditScore: 751, annualIncome: 128000, employmentStatus: "employed", crmSource: "manual",
+    currentAddress: "83 Commonwealth Ave #5, Boston, MA 02116",
+  });
+  const buchananLoan = await upsertLoan({
+    loanNumber: "PB-2025-1048776",
+    borrowerId: buchanan["id"], borrowerName: "Sandra Buchanan",
+    propertyAddress: "83 Commonwealth Ave #5, Boston, MA 02116",
+    loanAmount: 415000, loanType: "conventional",
+    interestRate: 6.875, ltv: 68.3, dti: 29.4, creditScore: 751,
+    stage: "underwriting", status: "active",
+    loanOfficer: "Mark Santos", processor: "Lisa Reyes",
+    loanPurpose: "rate_term_refinance", propertyType: "condo", occupancyType: "primary",
+  });
+  if (buchananLoan["id"]) {
+    await addEscrow({
+      loanId: buchananLoan["id"], loanNumber: "PB-2025-1048776",
+      borrowerName: "Sandra Buchanan",
+      propertyAddress: "83 Commonwealth Ave #5, Boston, MA 02116",
+      propertyTaxAnnual: 7800, insuranceAnnual: 1800, hoaAnnual: 7200,
+      monthlyEscrowPayment: 1400, balance: 2100, status: "active",
+      nextDisbursementDate: "2026-06-15", nextDisbursementType: "property_tax",
+      nextDisbursementAmount: 3900,
+    });
+    await addTask({
+      loanId: buchananLoan["id"], loanNumber: "PB-2025-1048776",
+      borrowerName: "Sandra Buchanan", taskType: "condition",
+      description: "Condo project approval required — confirm HOA financials and master policy meet Fannie Mae warrantable condo guidelines",
+      dueDate: "2026-05-08", assignedTo: "Lisa Reyes", status: "open", priority: "high",
+    });
+    await addTask({
+      loanId: buchananLoan["id"], loanNumber: "PB-2025-1048776",
+      borrowerName: "Sandra Buchanan", taskType: "appraisal",
+      description: "Desk appraisal ordered — prior appraisal from 2022 on file; underwriter needs 2026 valuation update",
+      dueDate: "2026-05-11", assignedTo: "Mark Santos", status: "open", priority: "normal",
+    });
+  }
+
+  // ── 9. Carlos Rivera — approved conventional, approaching closing ─────────
+  console.log("\n── Carlos Rivera  (approved, closing)");
+  const rivera = await upsertBorrower({
+    firstName: "Carlos", lastName: "Rivera",
+    email: "c.rivera@riveraholdings.com", phone: "(786) 501-3344",
+    creditScore: 778, annualIncome: 165000, employmentStatus: "self_employed", crmSource: "manual",
+    currentAddress: "1100 Brickell Bay Dr #38, Miami, FL 33131",
+  });
+  const riveraLoan = await upsertLoan({
+    loanNumber: "PB-2025-1046533",
+    borrowerId: rivera["id"], borrowerName: "Carlos Rivera",
+    propertyAddress: "2240 NE 7th Court, Miami, FL 33137",
+    loanAmount: 540000, loanType: "conventional",
+    interestRate: 7.25, ltv: 75.0, dti: 31.2, creditScore: 778,
+    stage: "closing", status: "active",
+    loanOfficer: "Mark Santos", processor: "Tom Nguyen",
+    loanPurpose: "purchase", propertyType: "single_family", occupancyType: "primary",
+    closingDate: "2026-05-09",
+  });
+  if (riveraLoan["id"]) {
+    await addEscrow({
+      loanId: riveraLoan["id"], loanNumber: "PB-2025-1046533",
+      borrowerName: "Carlos Rivera",
+      propertyAddress: "2240 NE 7th Court, Miami, FL 33137",
+      propertyTaxAnnual: 9200, insuranceAnnual: 4800, hoaAnnual: 0,
+      monthlyEscrowPayment: 1166.67, balance: 2800, status: "active",
+      nextDisbursementDate: "2026-11-01", nextDisbursementType: "property_tax",
+      nextDisbursementAmount: 9200,
+    });
+    await addTask({
+      loanId: riveraLoan["id"], loanNumber: "PB-2025-1046533",
+      borrowerName: "Carlos Rivera", taskType: "condition",
+      description: "Clear to Close checklist — confirm all prior-to-closing conditions satisfied: title insurance binder, final walkthrough, wire instructions verified",
+      dueDate: "2026-05-08", assignedTo: "Tom Nguyen", status: "open", priority: "urgent",
+    });
+    await addTask({
+      loanId: riveraLoan["id"], loanNumber: "PB-2025-1046533",
+      borrowerName: "Carlos Rivera", taskType: "disclosure",
+      description: "Send Closing Disclosure to borrower — must be received 3 business days before closing on 2026-05-09",
+      dueDate: "2026-05-06", assignedTo: "Tom Nguyen", status: "open", priority: "urgent",
+    });
+  }
+
+  // ── 10. Megan Hartley — investment property, underwriting ─────────────────
+  console.log("\n── Megan Hartley  (investment property, underwriting)");
+  const hartley = await upsertBorrower({
+    firstName: "Megan", lastName: "Hartley",
+    email: "m.hartley@hartleyinvestments.net", phone: "(312) 667-9203",
+    creditScore: 732, annualIncome: 112000, employmentStatus: "employed", crmSource: "manual",
+    currentAddress: "500 N Lake Shore Dr #2104, Chicago, IL 60611",
+  });
+  const hartleyLoan = await upsertLoan({
+    loanNumber: "PB-2025-1052401",
+    borrowerId: hartley["id"], borrowerName: "Megan Hartley",
+    propertyAddress: "1420 N Milwaukee Ave, Chicago, IL 60622",
+    loanAmount: 295000, loanType: "conventional",
+    interestRate: 7.875, ltv: 73.8, dti: 36.1, creditScore: 732,
+    stage: "underwriting", status: "active",
+    loanOfficer: "Mark Santos", processor: "Lisa Reyes",
+    loanPurpose: "purchase", propertyType: "multi_family", occupancyType: "investment",
+  });
+  if (hartleyLoan["id"]) {
+    await addTask({
+      loanId: hartleyLoan["id"], loanNumber: "PB-2025-1052401",
+      borrowerName: "Megan Hartley", taskType: "document_request",
+      description: "Investment property: collect current lease agreements and calculate 75% rental income for qualifying — 2-unit property requires signed leases",
+      dueDate: "2026-05-09", assignedTo: "Lisa Reyes", status: "open", priority: "urgent",
+    });
+    await addTask({
+      loanId: hartleyLoan["id"], loanNumber: "PB-2025-1052401",
+      borrowerName: "Megan Hartley", taskType: "condition",
+      description: "Investment property reserves: conventional requires 6 months PITI in reserves for non-owner-occupied — verify $18,750 in liquid assets",
+      dueDate: "2026-05-12", assignedTo: "Mark Santos", status: "open", priority: "high",
+    });
+  }
+
   console.log("\n✅  Seed complete.\n");
 }
 

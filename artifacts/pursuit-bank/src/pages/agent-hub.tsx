@@ -13,7 +13,8 @@ import {
   BookOpen, ClipboardCheck, RefreshCw, User, Briefcase, Layers,
   Clock, ArrowUpDown, UserCheck, Bell, Search, CalendarClock,
   Calendar, FileBarChart, FolderOpen, Send, CheckCircle2, Zap,
-  Download, ChevronRight, RotateCcw, Info, TrendingUp, AlertCircle
+  Download, ChevronRight, RotateCcw, Info, TrendingUp, AlertCircle,
+  Scale, FileSearch, ListChecks, SlidersHorizontal,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/format";
 
@@ -43,25 +44,25 @@ const AGENTS: AgentDef[] = [
   {
     id: "escrow-analysis",
     name: "Escrow Analysis",
-    description: "Reviews all escrow accounts, flags shortages and surpluses, recalculates monthly payments, generates analysis letters and creates follow-up tasks.",
+    description: "Reviews all escrow accounts, flags shortages and surpluses, recalculates monthly payments, and creates processor follow-up tasks.",
     icon: Building2,
     accentColor: "bg-blue-50",
     accentText: "text-blue-600",
     borderActive: "border-blue-300",
     steps: [
       { id: "fetch", label: "Fetch Accounts", icon: Database },
-      { id: "calc", label: "Calc Payments", icon: Calculator },
+      { id: "balances", label: "Check Balances", icon: Scale },
       { id: "flag", label: "Flag Shortages", icon: AlertTriangle },
-      { id: "letters", label: "Draft Letters", icon: FileText },
+      { id: "calc", label: "Calc Adjustments", icon: Calculator },
       { id: "tasks", label: "Create Tasks", icon: ClipboardList },
       { id: "done", label: "Complete", icon: CheckCircle2 },
     ],
-    trigger: "Run the escrow analysis agent. Review all escrow accounts, identify any shortages or surpluses by comparing current balances to required reserves, calculate required monthly payment adjustments for each account, and create follow-up tasks for any accounts in shortage. Summarise all findings with specific account names and dollar amounts.",
+    trigger: "Run the escrow analysis agent. Use get_all_escrow_accounts to retrieve every account. For each account, check the balance against required two-month reserves. Call get_escrow_shortages to get detailed shortage data. For every shortage account, calculate the required monthly payment increase and call create_loan_task (type: 'condition', priority: 'high') to create a processor follow-up task. End with a summary table: borrower name, loan number, balance, shortfall amount, monthly adjustment required, and whether a task was created.",
   },
   {
     id: "heloc-processing",
     name: "HELOC Processing",
-    description: "Reviews pending HELOC applications, checks credit scores and LTV ratios against guidelines, generates approval conditions and updates status.",
+    description: "Reviews all pending HELOC applications, runs credit and LTV checks against guidelines, then generates approval conditions per file.",
     icon: CreditCard,
     accentColor: "bg-violet-50",
     accentText: "text-violet-600",
@@ -69,80 +70,84 @@ const AGENTS: AgentDef[] = [
     steps: [
       { id: "pull", label: "Pull Applications", icon: Download },
       { id: "credit", label: "Check Credit", icon: Shield },
-      { id: "ltv", label: "Calculate LTV", icon: Percent },
-      { id: "guidelines", label: "Verify Guidelines", icon: BookOpen },
-      { id: "conditions", label: "Gen Conditions", icon: ClipboardCheck },
-      { id: "update", label: "Update Status", icon: RefreshCw },
+      { id: "ltv", label: "Verify LTV", icon: Percent },
+      { id: "guidelines", label: "Check Guidelines", icon: BookOpen },
+      { id: "conditions", label: "Draft Conditions", icon: ClipboardCheck },
+      { id: "tasks", label: "Create Tasks", icon: ClipboardList },
     ],
-    trigger: "Run the HELOC processing agent. Review all pending HELOC applications, check each applicant's credit score and calculate LTV ratios against our guidelines (max 85% LTV for HELOCs), identify any eligibility issues, and generate a specific list of approval conditions for each application. Provide a status recommendation for each pending application.",
+    trigger: "Run the HELOC processing agent. Call get_heloc_pending_details to get all pending applications. For each one: (1) verify credit score meets our 620 minimum, (2) confirm combined LTV is under 85%, (3) check it against HELOC product guidelines. Then for each eligible application generate a specific numbered list of approval conditions. For any that fail credit or LTV, create a decline task using create_loan_task with priority 'high'. End with a status table: borrower, credit score, LTV, result (approve/decline/conditional), and conditions list.",
   },
   {
     id: "loan-intake",
     name: "Loan Intake",
-    description: "Guides new loan applications through intake: borrower verification, DTI calculation, product matching, and document checklist generation.",
+    description: "Walks a new loan through intake: searches for existing borrower, verifies employment, calculates DTI, matches product, builds document checklist.",
     icon: FilePlus2,
     accentColor: "bg-emerald-50",
     accentText: "text-emerald-600",
     borderActive: "border-emerald-300",
     steps: [
-      { id: "gather", label: "Gather Info", icon: User },
+      { id: "search", label: "Search Borrower", icon: Search },
       { id: "verify", label: "Verify Employment", icon: Briefcase },
       { id: "dti", label: "Calculate DTI", icon: Calculator },
       { id: "match", label: "Match Product", icon: Layers },
-      { id: "checklist", label: "Build Checklist", icon: ClipboardList },
+      { id: "checklist", label: "Build Checklist", icon: ListChecks },
+      { id: "tasks", label: "Create Tasks", icon: ClipboardList },
     ],
-    trigger: "Run the loan intake agent. Help me start a new loan application. Ask me for the key borrower information needed, calculate DTI, identify the best matching loan product from our portfolio, and generate a complete document checklist for the borrower. Walk me through each step interactively.",
+    trigger: "Run the loan intake agent. Ask me for the borrower's name first — then immediately call search_customer to check if they're in the system. If found, call get_customer_full_profile to pull their history. Then ask: annual income, existing monthly debts, proposed loan amount. Call calculate_dti with those numbers to compute front and back DTI. Based on DTI, credit score, and loan purpose, recommend the best matching product from our portfolio. Generate a document checklist for the loan type. Create intake tasks using create_loan_task for any immediate action items. Guide me one step at a time.",
   },
   {
     id: "task-triage",
     name: "Task Triage",
-    description: "Sorts the full task queue by urgency and due date, escalates overdue items, reassigns unattended tasks, and generates a prioritised daily action plan.",
+    description: "Audits the full open task queue, identifies overdue and unassigned items, then produces a prioritised daily action plan for processors.",
     icon: ClipboardList,
     accentColor: "bg-amber-50",
     accentText: "text-amber-600",
     borderActive: "border-amber-300",
     steps: [
       { id: "load", label: "Load Queue", icon: Database },
-      { id: "overdue", label: "Check Overdue", icon: Clock },
+      { id: "overdue", label: "Flag Overdue", icon: Clock },
       { id: "prioritise", label: "Prioritise", icon: ArrowUpDown },
-      { id: "reassign", label: "Flag Reassign", icon: UserCheck },
+      { id: "assign", label: "Check Assignments", icon: UserCheck },
+      { id: "escalate", label: "Escalate Tasks", icon: AlertTriangle },
       { id: "plan", label: "Action Plan", icon: Bell },
     ],
-    trigger: "Run the task triage agent. Review the entire open task queue, identify every overdue or urgent item, assess which tasks need immediate attention vs can wait, flag any tasks that need reassignment, and produce a prioritised action plan for today with specific tasks listed by priority order. Include borrower names and loan numbers.",
+    trigger: "Run the task triage agent. Call get_overdue_tasks to find all overdue and urgent items. Then review the full open task queue. Group tasks into three tiers: (1) CRITICAL — overdue or due today, (2) HIGH — due within 3 days, (3) NORMAL — all others. For any overdue task that still has no activity, call create_loan_task to create an escalation task with priority 'urgent'. List every task by tier with borrower name, loan number, description, due date, and assigned processor. End with a concise action plan: what the team must complete today.",
   },
   {
     id: "pipeline-monitor",
     name: "Pipeline Monitor",
-    description: "Scans all active loans for stage duration, identifies stalled files, flags closings at risk, and reports on pipeline health.",
+    description: "Scans every active loan by stage, flags stalled files, surfaces closing-risk loans, and produces a pipeline health report with action items.",
     icon: Activity,
     accentColor: "bg-rose-50",
     accentText: "text-rose-600",
     borderActive: "border-rose-300",
     steps: [
       { id: "scan", label: "Scan Pipeline", icon: Search },
-      { id: "age", label: "Check Stage Age", icon: CalendarClock },
-      { id: "flag", label: "Flag At-Risk", icon: AlertTriangle },
+      { id: "stages", label: "Check Stages", icon: CalendarClock },
+      { id: "stalled", label: "Find Stalled", icon: AlertTriangle },
       { id: "closings", label: "Review Closings", icon: Calendar },
+      { id: "tasks", label: "Create Tasks", icon: ClipboardList },
       { id: "report", label: "Pipeline Report", icon: FileBarChart },
     ],
-    trigger: "Run the pipeline monitor agent. Scan all active loans in the pipeline, check how long each loan has been in its current stage, identify any files that appear stalled or at risk of missing deadlines, flag any loans approaching closing that need immediate processor attention, and generate a comprehensive pipeline health report with specific loan numbers and recommended actions.",
+    trigger: "Run the pipeline monitor agent. Call get_pipeline_at_risk first to get the high-level view. Then call get_loans_in_stage for 'processing', 'underwriting', and 'closing' stages. For each closing-stage loan, check if a Closing Disclosure task exists and if not, call create_loan_task (type: 'disclosure', priority: 'urgent'). Identify any loan in processing or underwriting with no open tasks — those are likely stalled. For each stalled loan, create a check-in task using create_loan_task. Produce a pipeline health report: stage breakdown, at-risk files, closing dates, and recommended next actions per loan.",
   },
   {
     id: "document-review",
     name: "Document Review",
-    description: "Checks loan file completeness against document checklists, identifies missing items, generates outstanding condition requests.",
+    description: "Checks file completeness for all processing and underwriting loans, finds document gaps, and drafts outstanding condition requests.",
     icon: Files,
     accentColor: "bg-cyan-50",
     accentText: "text-cyan-600",
     borderActive: "border-cyan-300",
     steps: [
       { id: "load", label: "Load Files", icon: FolderOpen },
-      { id: "check", label: "Check Checklist", icon: ClipboardCheck },
+      { id: "fetch", label: "Fetch Docs", icon: FileSearch },
       { id: "gaps", label: "Find Gaps", icon: Search },
       { id: "request", label: "Draft Requests", icon: Send },
-      { id: "log", label: "Log Conditions", icon: FileText },
+      { id: "tasks", label: "Log Conditions", icon: ClipboardList },
+      { id: "done", label: "Complete", icon: CheckCircle2 },
     ],
-    trigger: "Run the document review agent. Check the document completeness across loans currently in processing and underwriting stages. Identify which loans have missing documents or outstanding conditions, draft specific document request messages for each gap found, and provide a complete list of conditions that need to be logged in the system.",
+    trigger: "Run the document review agent. Call get_loans_in_stage for 'processing' and then 'underwriting' to get all active files. For each loan, call get_loan_documents with its loan number to check completeness. Identify all loans with required documents in 'pending' or 'missing' status. For each gap found, call create_loan_task with type 'document_request', a specific description of what is needed and why, and priority 'high'. End with a complete gap report: loan number, borrower name, missing documents, and whether a request task was created.",
   },
 ];
 
@@ -690,7 +695,7 @@ export default function AgentHub() {
       const resp = await fetch(`/api/borrowers?search=${encodeURIComponent(name)}`);
       const borrowers = await resp.json();
       if (!Array.isArray(borrowers) || borrowers.length === 0) {
-        return `No borrower found matching "${name}". They are not in the system. Closest names in the system: ${["Elena Castillo", "Robert Chen", "Amanda Foster", "David Kim", "Patricia Monroe", "Sarah Nguyen", "Michael Thornton", "James Wallace", "James Paterson", "Lisa Chen", "Marcus Williams", "Jennifer Santos", "David Park"].join(", ")}. Ask the user if the name might be spelled differently, or if this is a brand new customer not yet in the system.`;
+        return `No borrower found matching "${name}". They are not in the system. Known clients: ${["Elena Castillo", "Robert Chen", "Amanda Foster", "David Kim", "Patricia Monroe", "Sarah Nguyen", "Michael Thornton", "James Wallace", "James Paterson", "Lisa Chen", "Marcus Williams", "Jennifer Santos", "David Park", "Rachel Kim", "Thomas Okoye", "Sandra Buchanan", "Carlos Rivera", "Megan Hartley"].join(", ")}. Ask the user if the name might be spelled differently, or if this is a brand new customer not yet in the system.`;
       }
       return JSON.stringify(borrowers.map((b: any) => ({
         id: b.id,
@@ -819,6 +824,198 @@ export default function AgentHub() {
       if (!loan) return `Loan ${loanNumber} not found in pipeline.`;
       const tasks = (allTasks ?? []).filter((t: any) => t.loanNumber === loanNumber);
       return JSON.stringify({ loan, openTasks: tasks.filter((t: any) => t.status === "open") });
+    },
+  });
+
+  // ── Workflow-supporting actions ──────────────────────────────────────────
+
+  useCopilotAction({
+    name: "get_all_escrow_accounts",
+    description: "Get all escrow accounts with current balance, monthly payment, and computed shortage or surplus amount. Use this at the start of the escrow analysis workflow.",
+    parameters: [],
+    handler: async () => {
+      const accounts = escrowAccounts ?? [];
+      return JSON.stringify(accounts.map((a: any) => {
+        const annualRequired = (Number(a.propertyTaxAnnual) + Number(a.insuranceAnnual) + Number(a.hoaAnnual));
+        const twoMonthReserve = (annualRequired / 12) * 2;
+        const shortfall = twoMonthReserve - Number(a.balance);
+        const recommendedMonthly = (annualRequired / 12) + (shortfall > 0 ? shortfall / 12 : 0);
+        return {
+          borrowerName: a.borrowerName,
+          loanNumber: a.loanNumber,
+          propertyAddress: a.propertyAddress,
+          balance: Number(a.balance),
+          currentMonthlyPayment: Number(a.monthlyEscrowPayment),
+          recommendedMonthlyPayment: Math.ceil(recommendedMonthly),
+          shortfallAmount: shortfall > 0 ? Math.ceil(shortfall) : 0,
+          surplusAmount: shortfall < 0 ? Math.floor(Math.abs(shortfall)) : 0,
+          status: a.status,
+          nextDisbursement: `${a.nextDisbursementDate} — ${a.nextDisbursementType} $${Number(a.nextDisbursementAmount).toLocaleString()}`,
+        };
+      }));
+    },
+  });
+
+  useCopilotAction({
+    name: "get_loans_in_stage",
+    description: "Get all loans currently in a specific pipeline stage. Valid stages: application, processing, underwriting, approved, closing, funded. Use this in pipeline monitoring and document review workflows.",
+    parameters: [
+      { name: "stage", type: "string", description: "Pipeline stage to filter by: application, processing, underwriting, approved, closing, funded" },
+    ],
+    handler: async ({ stage }) => {
+      const loans = (loansData?.loans ?? []).filter((l: any) => l.stage === stage);
+      if (loans.length === 0) return `No loans currently in '${stage}' stage.`;
+      return JSON.stringify(loans.map((l: any) => {
+        const loanTasks = (openTasks ?? []).filter((t: any) => t.loanNumber === l.loanNumber);
+        return {
+          loanNumber: l.loanNumber,
+          borrowerName: l.borrowerName,
+          loanAmount: l.loanAmount,
+          loanType: l.loanType,
+          loanPurpose: l.loanPurpose,
+          interestRate: l.interestRate,
+          ltv: l.ltv,
+          dti: l.dti,
+          creditScore: l.creditScore,
+          loanOfficer: l.loanOfficer,
+          processor: l.processor,
+          closingDate: l.closingDate ?? "not set",
+          openTaskCount: loanTasks.length,
+          urgentTaskCount: loanTasks.filter((t: any) => t.priority === "urgent").length,
+        };
+      }));
+    },
+  });
+
+  useCopilotAction({
+    name: "get_loan_documents",
+    description: "Get the document checklist and completion status for a specific loan. Use this in the document review workflow to find gaps.",
+    parameters: [
+      { name: "loanNumber", type: "string", description: "The loan number to check documents for" },
+    ],
+    handler: async ({ loanNumber }) => {
+      const loan = (loansData?.loans ?? []).find((l: any) => l.loanNumber === loanNumber);
+      if (!loan) return `Loan ${loanNumber} not found.`;
+      const resp = await fetch(`/api/loans/${loan.id}/documents`);
+      if (!resp.ok) return `Could not fetch documents for ${loanNumber} — the loan may not have a document checklist yet.`;
+      const docs = await resp.json();
+      if (!Array.isArray(docs) || docs.length === 0) return `No document checklist found for ${loanNumber} (${loan.borrowerName}).`;
+      const received = docs.filter((d: any) => d.status === "received").length;
+      const pending = docs.filter((d: any) => d.status === "pending" && d.required).length;
+      const missing = docs.filter((d: any) => d.status === "missing" && d.required).length;
+      return JSON.stringify({
+        loanNumber,
+        borrowerName: loan.borrowerName,
+        stage: loan.stage,
+        loanType: loan.loanType,
+        summary: `${received} received, ${pending} pending, ${missing} missing (required)`,
+        documents: docs.map((d: any) => ({
+          name: d.documentName,
+          type: d.documentType,
+          status: d.status,
+          required: d.required,
+          notes: d.notes ?? null,
+        })),
+      });
+    },
+  });
+
+  useCopilotAction({
+    name: "search_tasks_by_borrower",
+    description: "Find all open tasks for a specific borrower by name. Use this to check what's already in the queue before creating duplicate tasks.",
+    parameters: [
+      { name: "borrowerName", type: "string", description: "Full or partial borrower name" },
+    ],
+    handler: async ({ borrowerName }) => {
+      const match = borrowerName.toLowerCase();
+      const tasks = (allTasks ?? []).filter((t: any) => t.borrowerName?.toLowerCase().includes(match));
+      if (tasks.length === 0) return `No tasks found for borrower matching "${borrowerName}".`;
+      const open = tasks.filter((t: any) => t.status === "open");
+      const done = tasks.filter((t: any) => t.status !== "open");
+      return JSON.stringify({
+        borrowerMatch: borrowerName,
+        totalTasks: tasks.length,
+        openTasks: open.map((t: any) => ({
+          id: t.id,
+          priority: t.priority,
+          taskType: t.taskType,
+          description: t.description,
+          dueDate: t.dueDate,
+          assignedTo: t.assignedTo,
+          loanNumber: t.loanNumber,
+        })),
+        completedTasks: done.map((t: any) => ({ id: t.id, description: t.description.slice(0, 80), status: t.status })),
+      });
+    },
+  });
+
+  useCopilotAction({
+    name: "calculate_dti",
+    description: "Calculate front-end and back-end Debt-to-Income ratios and check eligibility against conventional, FHA, VA, and USDA guidelines. Use this during loan intake.",
+    parameters: [
+      { name: "annualIncome", type: "number", description: "Borrower's gross annual income in dollars" },
+      { name: "monthlyDebts", type: "number", description: "Total existing monthly debt payments (car loans, student loans, credit card minimums — NOT including proposed housing payment)" },
+      { name: "proposedMonthlyPayment", type: "number", description: "Proposed total monthly housing payment including P&I, property taxes, insurance, and HOA" },
+    ],
+    handler: async ({ annualIncome, monthlyDebts, proposedMonthlyPayment }) => {
+      const monthlyGross = annualIncome / 12;
+      const frontDti = (proposedMonthlyPayment / monthlyGross) * 100;
+      const backDti = ((proposedMonthlyPayment + monthlyDebts) / monthlyGross) * 100;
+      return JSON.stringify({
+        grossMonthlyIncome: `$${monthlyGross.toFixed(0)}`,
+        proposedHousingPayment: `$${proposedMonthlyPayment.toLocaleString()}`,
+        existingMonthlyDebts: `$${monthlyDebts.toLocaleString()}`,
+        frontEndDti: `${frontDti.toFixed(1)}%`,
+        backEndDti: `${backDti.toFixed(1)}%`,
+        guidelineChecks: {
+          conventional: backDti <= 45 ? `✓ Eligible (${backDti.toFixed(1)}% ≤ 45%)` : `✗ Too high — ${(backDti - 45).toFixed(1)}% over conventional 45% limit`,
+          fha: backDti <= 57 ? `✓ Eligible (${backDti.toFixed(1)}% ≤ 57% with compensating factors)` : `✗ Too high — exceeds FHA 57% ceiling`,
+          va: backDti <= 41 ? `✓ Within VA guideline (${backDti.toFixed(1)}% ≤ 41%)` : `⚠ ${backDti.toFixed(1)}% exceeds VA 41% guideline — residual income analysis required`,
+          usda: backDti <= 41 ? `✓ Eligible (${backDti.toFixed(1)}% ≤ 41%)` : `✗ Exceeds USDA 41% back-end limit`,
+        },
+        recommendation: backDti <= 45 ? "Conventional or FHA both viable — recommend conventional if credit score ≥ 620." : backDti <= 57 ? "Conventional not eligible. FHA may work with compensating factors (reserves, credit history)." : "DTI too high for most programs. Borrower should reduce debts or increase income before applying.",
+      });
+    },
+  });
+
+  useCopilotAction({
+    name: "check_heloc_eligibility",
+    description: "Check if an existing borrower is eligible for a HELOC based on their credit score, existing mortgage balance, and estimated property value. Call get_customer_full_profile first to get the mortgage balance.",
+    parameters: [
+      { name: "borrowerId", type: "number", description: "Borrower ID from search_customer" },
+      { name: "borrowerName", type: "string", description: "Borrower full name" },
+      { name: "estimatedPropertyValue", type: "number", description: "Current estimated market value of the property in dollars" },
+      { name: "requestedCreditLimit", type: "number", description: "Requested HELOC credit limit in dollars" },
+    ],
+    handler: async ({ borrowerId, borrowerName, estimatedPropertyValue, requestedCreditLimit }) => {
+      const borrowerResp = await fetch(`/api/borrowers/${borrowerId}`);
+      const borrower = await borrowerResp.json();
+      const allLoans = loansData?.loans ?? [];
+      const existingMortgage = allLoans.find((l: any) =>
+        l.borrowerId === borrowerId || l.borrowerName?.toLowerCase().includes(borrowerName.toLowerCase())
+      );
+      const existingBalance = existingMortgage ? Number(existingMortgage.loanAmount) : 0;
+      const combinedLtv = ((existingBalance + requestedCreditLimit) / estimatedPropertyValue) * 100;
+      const maxHeloc = (estimatedPropertyValue * 0.85) - existingBalance;
+      const creditOk = (borrower.creditScore ?? 0) >= 620;
+      const ltvOk = combinedLtv <= 85;
+      const eligible = creditOk && ltvOk;
+      return JSON.stringify({
+        borrower: borrowerName,
+        creditScore: borrower.creditScore,
+        creditCheck: creditOk ? `✓ ${borrower.creditScore} meets minimum 620` : `✗ ${borrower.creditScore} is below minimum 620`,
+        existingMortgageBalance: `$${existingBalance.toLocaleString()}`,
+        existingLoanNumber: existingMortgage?.loanNumber ?? "none on file",
+        estimatedPropertyValue: `$${estimatedPropertyValue.toLocaleString()}`,
+        requestedCreditLimit: `$${requestedCreditLimit.toLocaleString()}`,
+        combinedLtv: `${combinedLtv.toFixed(1)}%`,
+        ltvCheck: ltvOk ? `✓ ${combinedLtv.toFixed(1)}% is within 85% max combined LTV` : `✗ ${combinedLtv.toFixed(1)}% exceeds 85% max combined LTV`,
+        maxEligibleHeloc: maxHeloc > 0 ? `$${Math.floor(maxHeloc).toLocaleString()}` : "$0 (insufficient equity)",
+        eligible,
+        recommendation: eligible
+          ? `Eligible. Max HELOC $${Math.floor(maxHeloc).toLocaleString()} — proceed with create_heloc_application.`
+          : `Not eligible. ${!creditOk ? `Credit must reach 620. ` : ""}${!ltvOk ? `Reduce credit limit to $${Math.max(0, Math.floor(maxHeloc)).toLocaleString()} to stay under 85% LTV.` : ""}`,
+      });
     },
   });
 
@@ -1032,43 +1229,55 @@ export default function AgentHub() {
 ## CRITICAL RULES — follow these exactly, every time:
 
 ### 1. SEARCH BEFORE ASKING
-When ANY customer name is mentioned (even partial, even mis-spelled), your VERY FIRST action must be to call search_customer with that name. Never say "I can't find them" before searching. Never ask for info you can look up.
+When ANY customer name is mentioned, call search_customer immediately — even for partial or misspelled names. Never say "I can't find them" without searching first. Never ask for info you can look up.
 
 ### 2. HELOC = EXISTING CUSTOMER ONLY
-HELOCs are home equity lines of credit. They require an existing property with equity. You NEVER set up a HELOC for a brand new customer with no history. When someone says "new HELOC application" or "HELOC for a client":
-- Step 1: Ask for (or extract from context) the customer's name
-- Step 2: Call search_customer immediately
-- Step 3: If found, call get_customer_full_profile to see their existing mortgage, property, equity position
-- Step 4: Confirm the property address and ask for the requested credit limit
-- Step 5: Calculate or confirm estimated combined LTV (existing mortgage + HELOC / property value). Must be under 85%
-- Step 6: Call create_heloc_application with confirmed details
-Do NOT dump a long list of questions. Guide through it one step at a time.
+HELOCs require an existing property with equity. Never set up a HELOC for a brand new customer. Workflow:
+- Step 1: Call search_customer with the name
+- Step 2: Call get_customer_full_profile to see existing mortgage and property
+- Step 3: Call check_heloc_eligibility(borrowerId, borrowerName, estimatedPropertyValue, requestedCreditLimit)
+- Step 4: If eligible, call create_heloc_application with confirmed details
+Guide one step at a time.
 
 ### 3. PULL THE PROFILE FIRST
-When you find a customer via search_customer, immediately call get_customer_full_profile. Show the user what you found — existing loans, HELOC accounts, credit score, escrow — before asking any further questions.
+After search_customer finds a match, immediately call get_customer_full_profile. Show what you found — loans, HELOC, escrow, credit score — before asking further questions.
 
-### 4. PRODUCT RULES (apply automatically)
-- HELOC: existing customers only, max 85% combined LTV, variable rate
-- Refinance: existing mortgage holders, check current rate vs new rate benefit
-- New purchase: new or existing customers, need property address, purchase price, down payment
-- Cash-out refi: existing customers, max 80% LTV
+### 4. LOAN INTAKE WORKFLOW
+For new loan applications:
+- Call search_customer first to check if borrower is in system
+- Collect income + debts, then call calculate_dti to verify eligibility
+- Recommend a product based on loan type, credit, DTI, LTV
+- Use create_loan_task for any intake conditions or document requests
 
-### 5. BE CONCISE AND CONVERSATIONAL
-One step at a time. Don't dump 10 questions at once. Use bullet points only for summaries. After each action, state what you found and what the next step is.
+### 5. WORKFLOW AGENT RULES
+When an agent workflow is triggered (Escrow Analysis, HELOC Processing, etc.), execute ALL the steps in sequence using the tools listed. Don't summarise from memory — actually call the tools and report real data.
 
-## AVAILABLE TOOLS
+### 6. BE CONCISE
+One step at a time. Bullets for summaries only. State what you found and what comes next.
+
+## TOOLS — CUSTOMER INTELLIGENCE
 - search_customer(name) — ALWAYS first when a name is mentioned
-- get_customer_full_profile(borrowerId, borrowerName) — full history after search
-- create_heloc_application(borrowerId, borrowerName, propertyAddress, creditLimit, estimatedLtv, loanOfficer) — create after confirming details
-- get_loan_details(loanNumber) — full loan + open tasks
+- get_customer_full_profile(borrowerId, borrowerName) — full history: loans, HELOC, escrow
+- check_heloc_eligibility(borrowerId, borrowerName, estimatedPropertyValue, requestedCreditLimit) — credit + LTV eligibility check
+- create_heloc_application(borrowerId, borrowerName, propertyAddress, creditLimit, estimatedLtv, loanOfficer) — create HELOC after confirming eligibility
+- calculate_dti(annualIncome, monthlyDebts, proposedMonthlyPayment) — front/back DTI + guideline check
+
+## TOOLS — LOAN & TASK OPERATIONS
+- get_loan_details(loanNumber) — full loan record + open tasks
+- get_loans_in_stage(stage) — all loans in a given stage (application/processing/underwriting/approved/closing/funded)
+- get_loan_documents(loanNumber) — document checklist and completion status
 - create_loan_task(loanNumber, borrowerName, taskType, description, priority, dueDate) — create task
-- get_escrow_shortages() — escrow shortage accounts
-- get_pipeline_at_risk() — stalled/at-risk loans
+- search_tasks_by_borrower(borrowerName) — all tasks for a borrower
+
+## TOOLS — PIPELINE & ESCROW ANALYSIS
+- get_all_escrow_accounts() — all accounts with shortfall/surplus computed
+- get_escrow_shortages() — shortage accounts only with detail
+- get_pipeline_at_risk() — stalled and closing-risk loans
 - get_heloc_pending_details() — pending HELOC applications
 - get_overdue_tasks() — overdue and urgent tasks
 
 ## TONE
-Direct, professional, action-oriented. You are the operations control layer — not a FAQ bot.`}
+Direct, professional, action-oriented. You are the operations control layer.`}
               labels={{
                 title: "Pursuit AI",
                 initial: "Ready. What are we working on?\n\n**New application?** Tell me the client's name and what they need.\n**Existing customer?** Give me their name — I'll pull the full profile.\n**Escrow / tasks / pipeline?** Ask directly or run an agent workflow above.",

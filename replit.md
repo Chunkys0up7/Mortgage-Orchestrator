@@ -57,15 +57,63 @@ Tables: `borrowers`, `loan_products`, `loans`, `loan_notes`, `loan_documents`, `
 - 10 activity log entries
 - 12 knowledge base articles
 
-### New Test Clients (added via seed script)
-- **James Paterson** (id 9) — existing homeowner, funded 2022 conventional @ 3.875%, active escrow, prime HELOC candidate (credit 742, 62% LTV)
-- **Lisa Chen** (id 10) — jumbo purchase $980k, underwriting, 2 urgent tasks (second appraisal, W-2 gap)
-- **Marcus Williams** (id 11) — cash-out refi $340k, processing, self-employed (2 urgent tasks: business tax returns, DTI reserves)
-- **Jennifer Santos** (id 12) — FHA purchase $198.5k, application stage, 2 urgent tasks (disclosure, down payment sourcing)
-- **David Park** (id 13) — existing funded mortgage, HELOC $300k in underwriting
+### All Test Clients (13 borrowers, 18 total)
+| ID | Name | Scenario | Stage | Loan Type |
+|---|---|---|---|---|
+| 1 | Michael Thornton | Original | funded | conventional |
+| 2 | Sarah Nguyen | Original | processing | conventional |
+| 3 | James Wallace | Original | underwriting | jumbo |
+| 4 | Elena Castillo | Original | approved | fha |
+| 5 | David Kim | Original | application | va |
+| 6 | Patricia Monroe | Original | closing | conventional |
+| 7 | Robert Chen | Original | processing | heloc |
+| 8 | Amanda Foster | Original | funded | conventional |
+| 9 | James Paterson | Existing homeowner, prime HELOC candidate (credit 742, 62% LTV) | funded | conventional |
+| 10 | Lisa Chen | Jumbo $980k purchase, employment gap flag | underwriting | jumbo |
+| 11 | Marcus Williams | Cash-out refi, self-employed, DTI 38.7% | processing | conventional |
+| 12 | Jennifer Santos | FHA first-time buyer, 3.5% down | application | fha |
+| 13 | David Park | Existing homeowner + HELOC $300k in underwriting | funded + heloc | conventional |
+| 14 | Rachel Kim | VA purchase $320k, needs COE | processing | va |
+| 15 | Thomas Okoye | USDA rural $185k, income eligibility check | application | usda |
+| 16 | Sandra Buchanan | Rate-term refi $415k, condo warrantability | underwriting | conventional |
+| 17 | Carlos Rivera | Approaching closing 2026-05-09, 2 urgent CTC tasks | closing | conventional |
+| 18 | Megan Hartley | Investment property $295k, lease docs + reserves | underwriting | conventional |
 
 ### Re-seeding
 Run `pnpm --filter @workspace/scripts run seed` — script is idempotent (skips existing records by email/loanNumber).
+
+## Agent Hub — CopilotKit Actions
+15 registered actions across 3 categories:
+
+### Customer Intelligence
+- `search_customer(name)` — searches borrowers by name
+- `get_customer_full_profile(borrowerId, borrowerName)` — full history: loans, HELOC, escrow
+- `check_heloc_eligibility(borrowerId, borrowerName, estimatedPropertyValue, requestedCreditLimit)` — credit + LTV eligibility
+- `create_heloc_application(...)` — creates HELOC after confirming eligibility
+- `calculate_dti(annualIncome, monthlyDebts, proposedMonthlyPayment)` — DTI + guideline check
+
+### Loan & Task Operations
+- `get_loan_details(loanNumber)` — loan record + open tasks
+- `get_loans_in_stage(stage)` — filter pipeline by stage
+- `get_loan_documents(loanNumber)` — document checklist completeness
+- `create_loan_task(...)` — create processor task
+- `search_tasks_by_borrower(borrowerName)` — all tasks for a borrower
+
+### Pipeline & Escrow Analysis
+- `get_all_escrow_accounts()` — all accounts with shortfall/surplus computed
+- `get_escrow_shortages()` — shortage-only detail
+- `get_pipeline_at_risk()` — stalled and closing-risk loans
+- `get_heloc_pending_details()` — pending HELOC applications
+- `get_overdue_tasks()` — overdue and urgent tasks
+
+## Agent Workflows (6 agents)
+Each workflow has an explicit trigger prompt naming exact tool calls:
+1. **Escrow Analysis** — `get_all_escrow_accounts` → `get_escrow_shortages` → `create_loan_task` per shortage
+2. **HELOC Processing** — `get_heloc_pending_details` → credit/LTV checks → `create_loan_task` per issue
+3. **Loan Intake** — `search_customer` → `calculate_dti` → product match → `create_loan_task`
+4. **Task Triage** — `get_overdue_tasks` → tier grouping → escalation via `create_loan_task`
+5. **Pipeline Monitor** — `get_pipeline_at_risk` → `get_loans_in_stage` per stage → `create_loan_task` for gaps
+6. **Document Review** — `get_loans_in_stage` → `get_loan_documents` per loan → `create_loan_task` per gap
 
 ## API Routes
 All routes prefixed with `/api`:
