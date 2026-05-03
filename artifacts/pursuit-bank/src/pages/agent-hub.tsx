@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useCopilotChat, useCopilotReadable, useCopilotAction } from "@copilotkit/react-core";
 import { CopilotChat } from "@copilotkit/react-ui";
 import { TextMessage, Role } from "@copilotkit/runtime-client-gql";
@@ -980,6 +980,77 @@ export default function AgentHub() {
   const { mutateAsync: completeTask } = useUpdateTask();
   const { mutateAsync: advanceLoanStatus } = useUpdateLoanStatus();
   const { mutateAsync: createHeloc } = useCreateHeloc();
+
+  // ── Proactive alert tracking ──────────────────────────────────────────
+  const alertBaseline = useRef<{ shortages: number; overdue: number; heloc: number } | null>(null);
+  const lastAlertAt = useRef<number>(0);
+  const ALERT_COOLDOWN_MS = 90_000;
+
+  useEffect(() => {
+    const tasks = openTasks ?? [];
+    const today = new Date().toISOString().slice(0, 10);
+    const overdueCount = tasks.filter((t: any) => t.dueDate && t.dueDate < today).length;
+    const shortages = (escrowAccounts ?? []).filter((a: any) => a.status === "shortage");
+    const helocPending = (helocAccounts ?? []).filter((a: any) => a.status === "pending" || a.stage === "application");
+
+    // First load — set baseline silently
+    if (alertBaseline.current === null) {
+      if (escrowAccounts !== undefined && openTasks !== undefined && helocAccounts !== undefined) {
+        alertBaseline.current = {
+          shortages: shortages.length,
+          overdue: overdueCount,
+          heloc: helocPending.length,
+        };
+      }
+      return;
+    }
+
+    // Don't interrupt an active agent or AI response, respect cooldown
+    const now = Date.now();
+    if (isLoading || activeAgentId || now - lastAlertAt.current < ALERT_COOLDOWN_MS) return;
+
+    const prev = alertBaseline.current;
+    const alerts: string[] = [];
+
+    if (shortages.length > prev.shortages) {
+      const newOnes = shortages.slice(prev.shortages);
+      newOnes.forEach((a: any) => {
+        alerts.push(`New escrow shortage: ${a.borrowerName} (${a.loanNumber}) — balance $${Number(a.balance ?? 0).toLocaleString()}, next disbursement ${a.nextDisbursementType ?? "payment"} $${Number(a.nextDisbursementAmount ?? 0).toLocaleString()} due ${a.nextDisbursementDate ?? "soon"}`);
+      });
+    }
+
+    if (overdueCount > prev.overdue) {
+      const newOverdue = tasks
+        .filter((t: any) => t.dueDate && t.dueDate < today)
+        .slice(prev.overdue);
+      newOverdue.forEach((t: any) => {
+        alerts.push(`Task now overdue: ${t.borrowerName} (${t.loanNumber}) — ${t.description?.slice(0, 80)} · was due ${t.dueDate}`);
+      });
+    }
+
+    if (helocPending.length > prev.heloc) {
+      const newHeloc = helocPending.slice(prev.heloc);
+      newHeloc.forEach((a: any) => {
+        alerts.push(`New HELOC application: ${a.borrowerName} — $${Number(a.creditLimit ?? 0).toLocaleString()} limit, ${a.ltv ?? "—"}% LTV`);
+      });
+    }
+
+    if (alerts.length > 0) {
+      lastAlertAt.current = now;
+      alertBaseline.current = { shortages: shortages.length, overdue: overdueCount, heloc: helocPending.length };
+      appendMessage(new TextMessage({
+        role: Role.User,
+        content: `⚡ PROACTIVE ALERT — new activity detected. Notify me concisely, then suggest the most important next action:\n${alerts.join("\n")}`,
+      }));
+    } else {
+      // Keep baseline current even when no new alerts
+      alertBaseline.current = { shortages: shortages.length, overdue: overdueCount, heloc: helocPending.length };
+    }
+  }, [
+    (escrowAccounts ?? []).filter((a: any) => a.status === "shortage").length,
+    (openTasks ?? []).filter((t: any) => t.dueDate && t.dueDate < new Date().toISOString().slice(0, 10)).length,
+    (helocAccounts ?? []).filter((a: any) => a.status === "pending" || a.stage === "application").length,
+  ]);
 
   // ── CopilotKit readable state ──────────────────────────────────────────
   useCopilotReadable({
@@ -2232,6 +2303,9 @@ AGENT WORKFLOW CONTROLS (use these during every agent run — they are MANDATORY
 
 DECISION AUDIT:
 - log_decision(borrowerName, loanNumber, decisionType, description, choice) — call after every user-confirmed decision in Guided Mode
+
+PROACTIVE ALERTS:
+When you receive a message starting with "⚡ PROACTIVE ALERT", this is an automated system trigger — NOT a user message. Respond as if YOU noticed this yourself. Never say "you mentioned" or "I see you sent". Instead speak in first person: "I just flagged a new escrow shortage..." or "Heads up —". Keep it to 2-3 lines max: state what happened, name the borrower and key number, suggest one specific next action. Do not ask follow-up questions — just deliver the alert and the recommendation.
 
 DAILY BRIEFING:
 When the user sends a message starting with "Good morning", "Good afternoon", or "Good evening" and asks for a briefing, treat it as the daily briefing request. Always pull all four data sources in sequence before formatting:
