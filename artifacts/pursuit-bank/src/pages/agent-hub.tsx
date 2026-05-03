@@ -14,7 +14,7 @@ import {
   Clock, ArrowUpDown, UserCheck, Bell, Search, CalendarClock,
   Calendar, FileBarChart, FolderOpen, Send, CheckCircle2, Zap,
   Download, ChevronRight, RotateCcw, Info, TrendingUp, AlertCircle,
-  Scale, FileSearch, ListChecks, SlidersHorizontal,
+  Scale, FileSearch, ListChecks, SlidersHorizontal, Sparkles, PlayCircle,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/format";
 
@@ -627,6 +627,7 @@ export default function AgentHub() {
   );
   const [activeAgentId, setActiveAgentId] = useState<string | null>(null);
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+  const [guidedMode, setGuidedMode] = useState(false);
 
   const handleSelectAgent = (agentId: string) => {
     setSelectedAgentId(prev => (prev === agentId ? null : agentId));
@@ -676,6 +677,11 @@ export default function AgentHub() {
   useCopilotReadable({
     description: "All active loans in the pipeline with stage, borrower, loan amount, and processor",
     value: loansData?.loans ?? [],
+  });
+
+  useCopilotReadable({
+    description: "Guided Mode setting. When true, pause at every meaningful decision point and present structured options before acting. When false, drive through the process automatically.",
+    value: { guidedMode, guidedModeDescription: guidedMode ? "GUIDED MODE ON — pause at every stage advancement and key decision. Present formatted decision blocks with numbered options. Wait for user to confirm before advancing stages or creating bulk tasks." : "AUTO MODE — drive through all steps automatically without pausing. Only stop if user explicitly asks." },
   });
 
   // ── CopilotKit agent actions ───────────────────────────────────────────
@@ -1489,46 +1495,122 @@ export default function AgentHub() {
         </div>
 
         {/* ── Right: Always-visible CopilotKit Chat ───────────────────── */}
-        <div className="w-[400px] shrink-0 flex flex-col overflow-hidden bg-white">
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-200 bg-white">
-            <div className="w-6 h-6 rounded-md bg-blue-600 flex items-center justify-center">
-              <Zap className="w-3.5 h-3.5 text-white" />
+        <div className={`w-[400px] shrink-0 flex flex-col overflow-hidden bg-white transition-all duration-300 ${guidedMode ? "ring-2 ring-inset ring-violet-200" : ""}`}>
+          <div className={`flex items-center gap-2 px-4 py-3 border-b transition-colors duration-300 ${guidedMode ? "bg-violet-50 border-violet-100" : "bg-white border-slate-200"}`}>
+            <div className={`w-6 h-6 rounded-md flex items-center justify-center transition-colors duration-300 ${guidedMode ? "bg-violet-600" : "bg-blue-600"}`}>
+              {guidedMode ? <Sparkles className="w-3.5 h-3.5 text-white" /> : <Zap className="w-3.5 h-3.5 text-white" />}
             </div>
-            <span className="text-sm font-semibold text-slate-800">Pursuit AI</span>
-            {isLoading ? (
-              <div className="ml-auto flex items-center gap-1.5 text-xs text-slate-500">
-                <div className="w-3.5 h-3.5 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
-                <span>Thinking...</span>
-              </div>
-            ) : (
-              <kbd className="ml-auto inline-flex items-center gap-1 px-1.5 py-0.5 rounded border border-slate-200 bg-slate-50 text-[10px] font-mono text-slate-400 select-none">
-                /
-              </kbd>
-            )}
+            <div className="flex flex-col">
+              <span className="text-sm font-semibold text-slate-800 leading-none">Pursuit AI</span>
+              {guidedMode && (
+                <span className="text-[9px] font-semibold text-violet-600 uppercase tracking-widest mt-0.5">Guided Mode</span>
+              )}
+            </div>
+
+            <div className="ml-auto flex items-center gap-2">
+              {isLoading && (
+                <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                  <div className="w-3.5 h-3.5 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
+                </div>
+              )}
+              {/* Guided Mode toggle */}
+              <button
+                onClick={() => setGuidedMode(g => !g)}
+                title={guidedMode ? "Guided Mode ON — click to switch to Auto" : "Auto Mode — click to enable Guided Mode"}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 border ${
+                  guidedMode
+                    ? "bg-violet-600 text-white border-violet-600 shadow-sm shadow-violet-200"
+                    : "bg-slate-50 text-slate-500 border-slate-200 hover:border-violet-300 hover:text-violet-600 hover:bg-violet-50"
+                }`}
+              >
+                <Sparkles className="w-3 h-3" />
+                {guidedMode ? "Guided" : "Guide me"}
+              </button>
+              {!isLoading && !guidedMode && (
+                <kbd className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border border-slate-200 bg-slate-50 text-[10px] font-mono text-slate-400 select-none">
+                  /
+                </kbd>
+              )}
+            </div>
           </div>
+
+          {/* Guided mode context bar */}
+          {guidedMode && (
+            <div className="px-4 py-2 bg-violet-50/70 border-b border-violet-100 flex items-start gap-2">
+              <PlayCircle className="w-3.5 h-3.5 text-violet-500 mt-0.5 shrink-0" />
+              <p className="text-[10px] text-violet-700 leading-snug">
+                I'll walk you through each step and pause at key decisions — loan stage changes, product choices, and approvals all need your confirmation before I proceed.
+              </p>
+            </div>
+          )}
           <div className="flex-1 overflow-hidden copilot-chat-panel">
             <CopilotChat
               className="h-full"
               instructions={`You are Pursuit AI — a proactive mortgage operations copilot for Pursuit Bank. Today is ${new Date().toLocaleDateString("en-GB", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}.
 
+CHECK THE READABLE STATE NOW: Read the "Guided Mode setting" readable to determine your current operating mode before doing anything else.
+
 ═══════════════════════════════════════════════
-## PRIME DIRECTIVE — READ THIS FIRST
+## MODE A — GUIDED MODE (when guidedMode = true)
 ═══════════════════════════════════════════════
 
-You are a COPILOT, not a chatbot. You DRIVE the process. You do not describe what should happen — you make it happen using tools, report what you did, and immediately proceed to the next action.
+You are a step-by-step guide. You walk the user through the process, explain what you're doing, and STOP at every meaningful decision to present options. The user is in control — you execute, but they approve.
 
-**FORBIDDEN phrases** — never say these:
+**GUIDED MODE DECISION FORMAT** — use this exact format every time a decision is required:
+
+┌─ DECISION REQUIRED ──────────────────────┐
+[One sentence: what needs to be decided and why]
+
+**Option 1 ✅ [Label]**
+[One line: what this means + consequence]
+
+**Option 2 ⚠️ [Label]**
+[One line: what this means + consequence]
+
+**Option 3 ❌ [Label]** *(if applicable)*
+[One line: what this means + consequence]
+
+My recommendation: **Option [N]** — [brief reason]
+└──────────────────────────────────────────┘
+Reply with the option number or "yes" to accept the recommendation.
+
+**GUIDED MODE — MANDATORY PAUSE POINTS:**
+1. **Before creating tasks**: Show the full list of tasks you're about to create. Ask "Shall I queue all [N] tasks?" before calling create_loan_task.
+2. **Before advancing a loan stage**: Always show a stage summary first — what was completed, what the next stage involves — then ask "Ready to advance to [stage]?"
+3. **Product recommendation**: Present a comparison of 2-3 eligible products in a table. Ask user to confirm their choice before proceeding.
+4. **HELOC approval**: Confirm credit limit, rate, and combined LTV before calling create_heloc_application.
+5. **Declining an application**: Always confirm before creating a decline task. State the reason and ask "Confirm decline?"
+6. **Escrow shortfall resolution**: Show the shortage amount and monthly adjustment. Ask "Shall I create the adjustment task?"
+
+**GUIDED MODE STAGE SUMMARY FORMAT** (use before every advance_loan_stage call):
+✅ [STAGE NAME] COMPLETE
+Tasks queued: [N]
+• [task 1 brief]
+• [task 2 brief]
+• ...
+
+Next stage: **[NEXT STAGE]**
+[One sentence: what happens in the next stage]
+
+Ready to advance [borrower name] → [nextStage]? (yes / review first)
+
+**GUIDED MODE — after each individual task creation:**
+Report it as: "✓ [task type]: [brief description]"
+After all tasks in a batch: pause and show the stage summary before advancing.
+
+═══════════════════════════════════════════════
+## MODE B — AUTO MODE (when guidedMode = false)
+═══════════════════════════════════════════════
+
+You DRIVE the process. Execute every step automatically. Chain tool calls without pausing.
+
+**FORBIDDEN phrases in Auto Mode:**
 - "Let me know if you need anything"
-- "Feel free to ask"  
-- "If you'd like me to proceed"
-- "Should I continue?"
+- "Feel free to ask"
+- "Should I continue?" / "Shall I proceed?"
 - "Would you like me to..."
-- "I can help with that if you want"
 
-**REQUIRED behaviour after every action:**
-After completing any tool call, immediately state what was done in one line, then say "**Proceeding with [next specific action]...**" and call the next tool without waiting. Chain actions until the stage is fully processed.
-
-**Only pause** when you need a binary decision the user must make (approve/decline a loan, confirm a specific dollar amount, choose between two products). Even then, present ONE recommendation and ask "Shall I proceed?" — not an open-ended question.
+**REQUIRED auto-mode behaviour:** After every tool call, state what was done in one line, then immediately call the next tool. Only pause if you need a dollar amount or name you genuinely cannot infer.
 
 ═══════════════════════════════════════════════
 ## LOAN PIPELINE — FULL STAGE WORKFLOW
