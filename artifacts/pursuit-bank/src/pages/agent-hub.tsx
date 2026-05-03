@@ -907,6 +907,68 @@ function StatPill({
   );
 }
 
+// ─── Pipeline Stage Bar ───────────────────────────────────────────────────────
+
+const PIPELINE_STAGES = [
+  { key: "application",  label: "Application",  bar: "bg-slate-400",    dot: "bg-slate-400",    text: "text-slate-600"   },
+  { key: "processing",   label: "Processing",   bar: "bg-blue-400",     dot: "bg-blue-400",     text: "text-blue-600"    },
+  { key: "underwriting", label: "Underwriting", bar: "bg-violet-400",   dot: "bg-violet-400",   text: "text-violet-600"  },
+  { key: "approved",     label: "Approved",     bar: "bg-amber-400",    dot: "bg-amber-400",    text: "text-amber-600"   },
+  { key: "closing",      label: "Closing",      bar: "bg-emerald-400",  dot: "bg-emerald-400",  text: "text-emerald-600" },
+  { key: "funded",       label: "Funded",       bar: "bg-teal-400",     dot: "bg-teal-400",     text: "text-teal-600"    },
+];
+
+function PipelineStageBar({ byStage }: { byStage?: { stage: string; count: number; volume: number }[] }) {
+  const total = byStage?.reduce((sum, s) => sum + s.count, 0) ?? 0;
+
+  return (
+    <div className="px-5 py-2.5 bg-slate-50 border-b border-slate-100 shrink-0">
+      <div className="max-w-5xl mx-auto flex items-center gap-5">
+        {/* Label */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <TrendingUp className="w-3 h-3 text-slate-400" />
+          <span className="text-[9.5px] font-semibold text-slate-400 uppercase tracking-widest">Stage</span>
+        </div>
+
+        {/* Segmented bar */}
+        <div className="flex h-2 rounded-full overflow-hidden bg-slate-200 flex-1 min-w-0">
+          {total > 0 ? PIPELINE_STAGES.map(s => {
+            const count = byStage?.find(b => b.stage === s.key)?.count ?? 0;
+            if (count === 0) return null;
+            return (
+              <div
+                key={s.key}
+                className={`${s.bar} transition-all duration-700 ease-out`}
+                style={{ width: `${(count / total) * 100}%` }}
+                title={`${s.label}: ${count}`}
+              />
+            );
+          }) : (
+            <div className="w-full bg-slate-200 animate-pulse rounded-full" />
+          )}
+        </div>
+
+        {/* Stage pills */}
+        <div className="flex items-center gap-3 shrink-0 flex-wrap">
+          {PIPELINE_STAGES.map(s => {
+            const stageData = byStage?.find(b => b.stage === s.key);
+            const count = stageData?.count ?? 0;
+            return (
+              <div key={s.key} className="flex items-center gap-1">
+                <div className={`w-1.5 h-1.5 rounded-full ${count > 0 ? s.dot : "bg-slate-200"}`} />
+                <span className="text-[9.5px] text-slate-400">{s.label}</span>
+                <span className={`text-[9.5px] font-bold tabular-nums ${count > 0 ? s.text : "text-slate-300"}`}>
+                  {count}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Agent Hub ───────────────────────────────────────────────────────────
 
 export default function AgentHub() {
@@ -1931,6 +1993,9 @@ Rules: max 7 lines per section. Specific names and dollar amounts only — no va
               </div>
             </div>
           </div>
+
+          {/* Pipeline stage bar */}
+          <PipelineStageBar byStage={summary?.byStage} />
 
           {/* Agent cards grid */}
           <div className="flex-1 overflow-y-auto p-5">
