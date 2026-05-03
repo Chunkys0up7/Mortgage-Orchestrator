@@ -15,7 +15,7 @@ import {
   Calendar, FileBarChart, FolderOpen, Send, CheckCircle2, Zap,
   Download, ChevronRight, RotateCcw, Info, TrendingUp, AlertCircle,
   Scale, FileSearch, ListChecks, SlidersHorizontal, Sparkles, PlayCircle,
-  ChevronDown, ChevronUp, X, ScrollText,
+  ChevronDown, ChevronUp, X, ScrollText, Sun,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/format";
 
@@ -917,6 +917,7 @@ export default function AgentHub() {
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [guidedMode, setGuidedMode] = useState(false);
   const [decisionLog, setDecisionLog] = useState<DecisionRecord[]>([]);
+  const [lastBriefingAt, setLastBriefingAt] = useState<Date | null>(null);
 
   const handleSelectAgent = (agentId: string) => {
     setSelectedAgentId(prev => (prev === agentId ? null : agentId));
@@ -1663,6 +1664,58 @@ export default function AgentHub() {
   }, [isLoading, activeAgentId]);
 
   // ── Trigger an agent ──────────────────────────────────────────────────
+  const runBriefing = useCallback(() => {
+    if (isLoading || activeAgentId) return;
+    const now = new Date();
+    const hour = now.getHours();
+    const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+    const dateStr = now.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+    setLastBriefingAt(now);
+
+    appendMessage(new TextMessage({
+      role: Role.User,
+      content: `${greeting}. Compile my daily operations briefing now. Pull all live data first, then format the report.
+
+STEP 1 — Pull all data (call all four in sequence):
+1. get_escrow_shortages() — every shortage account with borrower name and amount
+2. get_overdue_tasks() — all overdue and urgent tasks sorted by due date
+3. get_pipeline_at_risk() — stalled loans and closing-risk files
+4. get_heloc_pending_details() — full pending HELOC queue
+
+STEP 2 — Format as this exact briefing report:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+☀️  DAILY BRIEFING · ${dateStr} · ${timeStr}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+**📊 PIPELINE HEALTH**
+[Stage breakdown — application / processing / underwriting / approved / closing / funded counts]
+[One line: total loans, total volume, highest-risk stage]
+
+**🔴 URGENT TASKS** · [N items]
+[Each: Borrower · Loan# · Task description · Due date — max 7, flag the most overdue first]
+
+**🏦 ESCROW ALERTS** · [N shortages]
+[Each: Borrower · current shortfall $X · required increase +$Y/month]
+[If none: "✓ All escrow accounts within reserve requirements"]
+
+**💳 HELOC QUEUE** · [N pending]
+[Each: Borrower · requested limit · estimated LTV · days pending]
+[If none: "✓ No pending HELOC applications"]
+
+**⚡ TODAY'S TOP 3 ACTIONS**
+1. [Single most critical action — specific borrower name + exactly what to do]
+2. [Second priority action]
+3. [Third priority action]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Rules: max 7 lines per section. Specific names and dollar amounts only — no vague statements. Top 3 Actions must be immediately actionable, not general advice.`,
+    }));
+  }, [isLoading, activeAgentId, appendMessage]);
+
   const runAgent = useCallback((agentId: string) => {
     if (activeAgentId) return;
     const agent = AGENTS.find(a => a.id === agentId);
@@ -1843,10 +1896,38 @@ export default function AgentHub() {
               value={helocPendingCount}
               sub="awaiting review"
             />
-            <div className="ml-auto shrink-0">
+            <div className="ml-auto shrink-0 flex items-center gap-2">
+              {/* Daily Briefing button */}
+              <div className="flex flex-col items-end gap-0.5">
+                <button
+                  onClick={runBriefing}
+                  disabled={isLoading || !!activeAgentId}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium transition-all duration-200 ${
+                    isLoading || !!activeAgentId
+                      ? "bg-slate-50 border-slate-200 text-slate-300 cursor-not-allowed"
+                      : "bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100 hover:border-amber-300 hover:shadow-sm shadow-amber-50"
+                  }`}
+                >
+                  {isLoading && lastBriefingAt && Date.now() - lastBriefingAt.getTime() < 60000 ? (
+                    <div className="w-3.5 h-3.5 rounded-full border-2 border-amber-400 border-t-transparent animate-spin" />
+                  ) : (
+                    <Sun className="w-3.5 h-3.5" />
+                  )}
+                  Daily Briefing
+                </button>
+                {lastBriefingAt && (
+                  <span className="text-[9px] text-slate-400 pr-0.5">
+                    Last: {lastBriefingAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                )}
+              </div>
+
+              <div className="h-7 w-px bg-slate-200" />
+
+              {/* Hint */}
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-500">
-                <Info className="w-3.5 h-3.5 text-slate-400" />
-                Click <strong className="text-slate-700 mx-1">Run Agent</strong> or ask Pursuit AI →
+                <Info className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <span>Click <strong className="text-slate-700">Run Agent</strong> or ask AI →</span>
               </div>
             </div>
           </div>
@@ -2095,7 +2176,16 @@ AGENT WORKFLOW CONTROLS (use these during every agent run — they are MANDATORY
 - report_agent_result(agentId, summary, tasksCreated, issuesFound) — CALL AFTER all work is done. Sets the result summary on the agent card and logs the run. summary is one line e.g. "3 shortages · $4,230 exposure · 3 tasks created".
 
 DECISION AUDIT:
-- log_decision(borrowerName, loanNumber, decisionType, description, choice) — call after every user-confirmed decision in Guided Mode`}
+- log_decision(borrowerName, loanNumber, decisionType, description, choice) — call after every user-confirmed decision in Guided Mode
+
+DAILY BRIEFING:
+When the user sends a message starting with "Good morning", "Good afternoon", or "Good evening" and asks for a briefing, treat it as the daily briefing request. Always pull all four data sources in sequence before formatting:
+1. get_escrow_shortages() — pull first
+2. get_overdue_tasks() — pull second
+3. get_pipeline_at_risk() — pull third
+4. get_heloc_pending_details() — pull fourth
+Then format as the structured report with the five sections exactly as requested: PIPELINE HEALTH, URGENT TASKS, ESCROW ALERTS, HELOC QUEUE, TODAY'S TOP 3 ACTIONS.
+Top 3 Actions must name specific borrowers and specific actions — never general advice like "review the pipeline."`}
               labels={{
                 title: "Pursuit AI",
                 initial: "Ready. What are we working on?\n\n**New application?** Tell me the client's name and what they need.\n**Existing customer?** Give me their name — I'll pull the full profile.\n**Escrow / tasks / pipeline?** Ask directly or run an agent workflow above.",
