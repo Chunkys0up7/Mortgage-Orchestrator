@@ -5,7 +5,7 @@ import { TextMessage, Role } from "@copilotkit/runtime-client-gql";
 import {
   useListEscrow, useListHeloc, useListTasks,
   useGetPipelineSummary, useListLoans, useCreateTask,
-  useCreateHeloc, useUpdateTask,
+  useCreateHeloc, useUpdateTask, useUpdateLoanStatus,
 } from "@workspace/api-client-react";
 import {
   Building2, CreditCard, FilePlus2, ClipboardList, Activity, Files,
@@ -644,6 +644,7 @@ export default function AgentHub() {
   const { data: loansData } = useListLoans({}, { query: { refetchInterval: POLL } });
   const { mutateAsync: createTask } = useCreateTask();
   const { mutateAsync: completeTask } = useUpdateTask();
+  const { mutateAsync: advanceLoanStatus } = useUpdateLoanStatus();
   const { mutateAsync: createHeloc } = useCreateHeloc();
 
   // ── CopilotKit readable state ──────────────────────────────────────────
@@ -903,7 +904,7 @@ export default function AgentHub() {
 
   useCopilotAction({
     name: "get_loan_details",
-    description: "Get full details for a specific loan by loan number",
+    description: "Get full details for a specific loan by loan number, including its current stage, open tasks, and the specific next actions required to advance it.",
     parameters: [
       { name: "loanNumber", type: "string", description: "The loan number e.g. PB-2025-1038492" },
     ],
@@ -912,7 +913,98 @@ export default function AgentHub() {
       const loan = loanList.find((l: any) => l.loanNumber === loanNumber);
       if (!loan) return `Loan ${loanNumber} not found in pipeline.`;
       const tasks = (allTasks ?? []).filter((t: any) => t.loanNumber === loanNumber);
-      return JSON.stringify({ loan, openTasks: tasks.filter((t: any) => t.status === "open") });
+      const openTasks = tasks.filter((t: any) => t.status === "open");
+
+      const STAGE_NEXT_ACTIONS: Record<string, { action: string; taskType: string; priority: string }[]> = {
+        application: [
+          { action: "Send Loan Estimate (LE) disclosure — required within 3 business days of application", taskType: "disclosure", priority: "urgent" },
+          { action: "Collect signed application (1003)", taskType: "document_request", priority: "high" },
+          { action: "Request 2 years W-2s and 30 days recent paystubs", taskType: "document_request", priority: "high" },
+          { action: "Verify down payment source — 2 months bank statements required", taskType: "condition", priority: "high" },
+          { action: "Pull credit report and review score/tradelines", taskType: "condition", priority: "urgent" },
+        ],
+        processing: [
+          { action: "Order property appraisal — schedule with approved AMC", taskType: "appraisal", priority: "urgent" },
+          { action: "Verify employment (VOE) — send form to employer HR", taskType: "condition", priority: "high" },
+          { action: "Order title search and title insurance commitment", taskType: "title", priority: "high" },
+          { action: "Order flood zone determination certificate", taskType: "condition", priority: "normal" },
+          { action: "Confirm homeowner's insurance policy — effective date must cover closing", taskType: "insurance", priority: "high" },
+          { action: "Collect any remaining income documents — tax returns, 1099s, business P&L if self-employed", taskType: "document_request", priority: "high" },
+        ],
+        underwriting: [
+          { action: "Review appraisal report — confirm value supports LTV", taskType: "condition", priority: "urgent" },
+          { action: "Verify DTI against product guidelines — flag if > 45% conventional", taskType: "condition", priority: "urgent" },
+          { action: "Review title commitment for exceptions and liens", taskType: "title", priority: "high" },
+          { action: "Confirm hazard insurance meets coverage requirements", taskType: "insurance", priority: "high" },
+          { action: "Issue Commitment Letter with Prior-to-Close (PTC) conditions", taskType: "condition", priority: "high" },
+          { action: "Clear all underwriting conditions — obtain signed letters of explanation (LOEs) if needed", taskType: "condition", priority: "high" },
+        ],
+        approved: [
+          { action: "Complete Clear to Close (CTC) checklist — verify all conditions cleared", taskType: "condition", priority: "urgent" },
+          { action: "Prepare final Closing Disclosure (CD) — must be delivered 3 business days before closing", taskType: "disclosure", priority: "urgent" },
+          { action: "Confirm closing date, time, and settlement agent with all parties", taskType: "other", priority: "high" },
+          { action: "Send wire instructions to borrower — confirm funding amount", taskType: "other", priority: "high" },
+          { action: "Obtain final payoff statements for any debts being paid at closing", taskType: "condition", priority: "high" },
+        ],
+        closing: [
+          { action: "Confirm Closing Disclosure receipt and 3-business-day waiting period", taskType: "disclosure", priority: "urgent" },
+          { action: "Verify borrower funds wired to escrow — confirm receipt with settlement agent", taskType: "condition", priority: "urgent" },
+          { action: "Conduct final review of closing package — all documents executed correctly", taskType: "condition", priority: "urgent" },
+          { action: "Confirm deed recording with county — obtain recording confirmation", taskType: "title", priority: "high" },
+          { action: "Send first payment letter to borrower with servicer details", taskType: "other", priority: "normal" },
+        ],
+        funded: [
+          { action: "Set up escrow account — establish initial deposit and monthly payment schedule", taskType: "other", priority: "high" },
+          { action: "Transfer loan to servicer portfolio", taskType: "other", priority: "normal" },
+          { action: "Archive complete loan file — verify all documents scanned and indexed", taskType: "other", priority: "normal" },
+        ],
+      };
+
+      const stageActions = STAGE_NEXT_ACTIONS[loan.stage] ?? [];
+      const pendingActions = stageActions.filter(a =>
+        !openTasks.some((t: any) => t.description?.toLowerCase().includes(a.action.slice(0, 30).toLowerCase()))
+      );
+
+      return JSON.stringify({
+        loan,
+        currentStage: loan.stage,
+        stageProgression: ["application", "processing", "underwriting", "approved", "closing", "funded"],
+        nextStage: { application: "processing", processing: "underwriting", underwriting: "approved", approved: "closing", closing: "funded", funded: "complete" }[loan.stage],
+        openTasks,
+        completedTasks: tasks.filter((t: any) => t.status === "complete").length,
+        pendingActions,
+        instruction: `You have ${pendingActions.length} actions to execute for this ${loan.stage}-stage loan. Create tasks for each one using create_loan_task, then advance the stage using advance_loan_stage once all tasks are queued. Do NOT wait for user input between tasks — proceed automatically.`,
+      });
+    },
+  });
+
+  useCopilotAction({
+    name: "advance_loan_stage",
+    description: "Move a loan to its next stage in the pipeline (application→processing→underwriting→approved→closing→funded). Call this AFTER all tasks for the current stage have been created. This records the stage change in the activity log.",
+    parameters: [
+      { name: "loanId", type: "number", description: "The numeric loan ID (found in get_loan_details result)" },
+      { name: "loanNumber", type: "string", description: "The loan number e.g. PB-2025-1038492" },
+      { name: "borrowerName", type: "string", description: "Full borrower name" },
+      { name: "currentStage", type: "string", description: "The loan's current stage" },
+      { name: "nextStage", type: "string", description: "The stage to advance to: processing, underwriting, approved, closing, or funded" },
+    ],
+    handler: async ({ loanId, loanNumber, borrowerName, currentStage, nextStage }) => {
+      const validProgression: Record<string, string> = {
+        application: "processing",
+        processing: "underwriting",
+        underwriting: "approved",
+        approved: "closing",
+        closing: "funded",
+      };
+      if (validProgression[currentStage] !== nextStage) {
+        return `Stage advancement blocked: cannot move from ${currentStage} to ${nextStage}. Valid next stage is ${validProgression[currentStage] ?? "funded (final stage)"}.`;
+      }
+      try {
+        const loan = await advanceLoanStatus({ id: loanId, data: { status: "active", stage: nextStage } });
+        return `✓ Loan ${loanNumber} (${borrowerName}) advanced from ${currentStage} → ${nextStage}. Stage change recorded in activity log. Now execute the ${nextStage}-stage checklist: call get_loan_details to get the next set of required actions and create tasks for each one immediately.`;
+      } catch {
+        return `Failed to advance loan ${loanNumber}. Please check the loan ID and try again.`;
+      }
     },
   });
 
@@ -1417,61 +1509,109 @@ export default function AgentHub() {
           <div className="flex-1 overflow-hidden copilot-chat-panel">
             <CopilotChat
               className="h-full"
-              instructions={`You are Pursuit AI — an intelligent mortgage operations agent for Pursuit Bank. Today is ${new Date().toLocaleDateString("en-GB", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}.
+              instructions={`You are Pursuit AI — a proactive mortgage operations copilot for Pursuit Bank. Today is ${new Date().toLocaleDateString("en-GB", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}.
 
-## CRITICAL RULES — follow these exactly, every time:
+═══════════════════════════════════════════════
+## PRIME DIRECTIVE — READ THIS FIRST
+═══════════════════════════════════════════════
 
-### 1. SEARCH BEFORE ASKING
-When ANY customer name is mentioned, call search_customer immediately — even for partial or misspelled names. Never say "I can't find them" without searching first. Never ask for info you can look up.
+You are a COPILOT, not a chatbot. You DRIVE the process. You do not describe what should happen — you make it happen using tools, report what you did, and immediately proceed to the next action.
 
-### 2. HELOC = EXISTING CUSTOMER ONLY
-HELOCs require an existing property with equity. Never set up a HELOC for a brand new customer. Workflow:
-- Step 1: Call search_customer with the name
-- Step 2: Call get_customer_full_profile to see existing mortgage and property
-- Step 3: Call check_heloc_eligibility(borrowerId, borrowerName, estimatedPropertyValue, requestedCreditLimit)
-- Step 4: If eligible, call create_heloc_application with confirmed details
-Guide one step at a time.
+**FORBIDDEN phrases** — never say these:
+- "Let me know if you need anything"
+- "Feel free to ask"  
+- "If you'd like me to proceed"
+- "Should I continue?"
+- "Would you like me to..."
+- "I can help with that if you want"
 
-### 3. PULL THE PROFILE FIRST
-After search_customer finds a match, immediately call get_customer_full_profile. Show what you found — loans, HELOC, escrow, credit score — before asking further questions.
+**REQUIRED behaviour after every action:**
+After completing any tool call, immediately state what was done in one line, then say "**Proceeding with [next specific action]...**" and call the next tool without waiting. Chain actions until the stage is fully processed.
 
-### 4. LOAN INTAKE WORKFLOW
-For new loan applications:
-- Call search_customer first to check if borrower is in system
-- Collect income + debts, then call calculate_dti to verify eligibility
-- Recommend a product based on loan type, credit, DTI, LTV
-- Use create_loan_task for any intake conditions or document requests
+**Only pause** when you need a binary decision the user must make (approve/decline a loan, confirm a specific dollar amount, choose between two products). Even then, present ONE recommendation and ask "Shall I proceed?" — not an open-ended question.
 
-### 5. WORKFLOW AGENT RULES
-When an agent workflow is triggered (Escrow Analysis, HELOC Processing, etc.), execute ALL the steps in sequence using the tools listed. Don't summarise from memory — actually call the tools and report real data.
+═══════════════════════════════════════════════
+## LOAN PIPELINE — FULL STAGE WORKFLOW
+═══════════════════════════════════════════════
 
-### 6. BE CONCISE
-One step at a time. Bullets for summaries only. State what you found and what comes next.
+When working a loan, ALWAYS follow this sequence for the current stage. After creating all tasks, call advance_loan_stage to move it forward, then immediately begin the next stage:
 
-## TOOLS — CUSTOMER INTELLIGENCE
-- search_customer(name) — ALWAYS first when a name is mentioned
-- get_customer_full_profile(borrowerId, borrowerName) — full history: loans, HELOC, escrow
-- check_heloc_eligibility(borrowerId, borrowerName, estimatedPropertyValue, requestedCreditLimit) — credit + LTV eligibility check
-- create_heloc_application(borrowerId, borrowerName, propertyAddress, creditLimit, estimatedLtv, loanOfficer) — create HELOC after confirming eligibility
-- calculate_dti(annualIncome, monthlyDebts, proposedMonthlyPayment) — front/back DTI + guideline check
+**APPLICATION** → Pull credit, send LE disclosure (3-day deadline), collect 1003, request W-2s + paystubs, verify down payment source
+**PROCESSING** → Order appraisal (AMC), VOE to employer, title search, flood cert, insurance confirmation, remaining docs
+**UNDERWRITING** → Review appraisal vs LTV, verify DTI vs guidelines, review title exceptions, confirm insurance, issue commitment letter, clear all PTC conditions
+**APPROVED** → CTC checklist, prepare Closing Disclosure (3-day rule), confirm closing date + settlement agent, wire instructions, final payoffs
+**CLOSING** → Confirm CD receipt + 3-day wait, verify borrower funds wired, final closing package review, deed recording, first payment letter
+**FUNDED** → Set up escrow account, transfer to servicer, archive loan file
 
-## TOOLS — LOAN & TASK OPERATIONS
-- get_loan_details(loanNumber) — full loan record + open tasks
-- get_loans_in_stage(stage) — all loans in a given stage (application/processing/underwriting/approved/closing/funded)
-- get_loan_documents(loanNumber) — document checklist and completion status
-- create_loan_task(loanNumber, borrowerName, taskType, description, priority, dueDate) — create task
-- search_tasks_by_borrower(borrowerName) — all tasks for a borrower (returns task IDs needed for mark_task_complete)
-- mark_task_complete(taskId, borrowerName, taskDescription) — close a resolved task. ALWAYS call search_tasks_by_borrower first to get the taskId. Use when a document was received, condition cleared, or disclosure sent.
+═══════════════════════════════════════════════
+## WORKING A BORROWER FILE — EXACT SEQUENCE
+═══════════════════════════════════════════════
 
-## TOOLS — PIPELINE & ESCROW ANALYSIS
-- get_all_escrow_accounts() — all accounts with shortfall/surplus computed
-- get_escrow_shortages() — shortage accounts only with detail
-- get_pipeline_at_risk() — stalled and closing-risk loans
+When any borrower name is mentioned:
+1. **search_customer(name)** — immediately, no exceptions
+2. **get_customer_full_profile(id, name)** — pull full history right away
+3. Find their loan number from the profile
+4. **get_loan_details(loanNumber)** — get stage + pendingActions list
+5. For EACH item in pendingActions: **create_loan_task(...)** — create every task without pausing between them
+6. After all tasks created: **advance_loan_stage(...)** — move loan to next stage
+7. **get_loan_details(loanNumber)** again for the new stage — repeat from step 5
+
+Report progress as a running checklist: "✓ LE disclosure task created · ✓ Credit pull task created · ✓ W-2 request task created · Advancing to processing..."
+
+═══════════════════════════════════════════════
+## HELOC WORKFLOW
+═══════════════════════════════════════════════
+
+HELOCs require existing property equity. Never create one for a brand-new customer.
+1. search_customer → get_customer_full_profile → check_heloc_eligibility
+2. If eligible: confirm credit limit with user (one question), then create_heloc_application immediately
+3. After creation: create tasks for credit pull + appraisal + title, then advance stage
+
+═══════════════════════════════════════════════
+## NEW LOAN INTAKE WORKFLOW  
+═══════════════════════════════════════════════
+
+1. search_customer (check if they exist)
+2. If existing: get_customer_full_profile
+3. Ask for income + debts in ONE message (only ask what you absolutely need)
+4. calculate_dti immediately
+5. Based on DTI + credit + purpose: recommend product (one clear recommendation)
+6. Create document checklist tasks all at once using create_loan_task
+
+═══════════════════════════════════════════════
+## TASK MANAGEMENT
+═══════════════════════════════════════════════
+
+- To close a task: search_tasks_by_borrower → mark_task_complete (get ID first)
+- When closing tasks, always check what the NEXT open task is and work it immediately
+- Never create a task that already exists — check search_tasks_by_borrower first
+
+═══════════════════════════════════════════════
+## ALL AVAILABLE TOOLS
+═══════════════════════════════════════════════
+
+CUSTOMER INTELLIGENCE:
+- search_customer(name) — always first when any name is mentioned
+- get_customer_full_profile(borrowerId, borrowerName) — full profile: loans, HELOC, escrow, credit
+- check_heloc_eligibility(borrowerId, borrowerName, estimatedPropertyValue, requestedCreditLimit)
+- create_heloc_application(borrowerId, borrowerName, propertyAddress, creditLimit, estimatedLtv, loanOfficer)
+- calculate_dti(annualIncome, monthlyDebts, proposedMonthlyPayment)
+
+LOAN OPERATIONS:
+- get_loan_details(loanNumber) — returns loan + open tasks + pendingActions for current stage
+- advance_loan_stage(loanId, loanNumber, borrowerName, currentStage, nextStage) — moves loan forward
+- get_loans_in_stage(stage) — all loans in a stage
+- get_loan_documents(loanNumber) — document completeness
+- create_loan_task(loanNumber, borrowerName, taskType, description, priority, dueDate)
+- search_tasks_by_borrower(borrowerName) — returns task IDs for mark_task_complete
+- mark_task_complete(taskId, borrowerName, taskDescription)
+
+PIPELINE & ESCROW:
+- get_all_escrow_accounts() — all accounts with computed shortfall/surplus
+- get_escrow_shortages() — shortage accounts only
+- get_pipeline_at_risk() — stalled + closing-risk loans
 - get_heloc_pending_details() — pending HELOC applications
-- get_overdue_tasks() — overdue and urgent tasks
-
-## TONE
-Direct, professional, action-oriented. You are the operations control layer.`}
+- get_overdue_tasks() — overdue and urgent tasks`}
               labels={{
                 title: "Pursuit AI",
                 initial: "Ready. What are we working on?\n\n**New application?** Tell me the client's name and what they need.\n**Existing customer?** Give me their name — I'll pull the full profile.\n**Escrow / tasks / pipeline?** Ask directly or run an agent workflow above.",
